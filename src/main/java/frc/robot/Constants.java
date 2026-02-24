@@ -59,6 +59,8 @@ public final class Constants {
     public static final int kLeftShootingMotorCanId = 25;
     public static final int kRightShootingMotorCanId = 22;
     public static final int kHoodMotorCanId = 20;
+
+     private static final int INDEXER_MOTOR_CAN_ID = 35; //indexer code 
     
 
     public static final int kGyroPort = 9;
