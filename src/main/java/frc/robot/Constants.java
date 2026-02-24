@@ -56,6 +56,11 @@ public final class Constants {
     public static final int kFrontRightTurningCanId = 5;
     public static final int kRearRightTurningCanId = 7;
 
+    public static final int kLeftShootingMotorCanId = 25;
+    public static final int kRightShootingMotorCanId = 22;
+    public static final int kHoodMotorCanId = 20;
+    
+
     public static final int kGyroPort = 9;
     public static final boolean kGyroReversed = false;
   }
