@@ -8,6 +8,7 @@ import edu.wpi.first.apriltag.AprilTagFieldLayout;
 import edu.wpi.first.apriltag.AprilTagFields;
 import edu.wpi.first.math.geometry.Transform3d;
 import edu.wpi.first.wpilibj.Timer;
+import java.util.List;
 import java.util.Optional;
 import org.photonvision.EstimatedRobotPose;
 import org.photonvision.PhotonCamera;
@@ -28,9 +29,13 @@ public class VisionIOLumaP1 implements VisionIO {
 
   @Override
   public void updateInputs(VisionIOInputs inputs) {
-    PhotonPipelineResult result = camera.getLatestResult();
     inputs.cameraConnected = camera.isConnected();
     if (!inputs.cameraConnected) return;
+
+    List<PhotonPipelineResult> results = camera.getAllUnreadResults();
+    if (results.isEmpty()) return;
+
+    PhotonPipelineResult result = results.get(results.size() - 1);
 
     inputs.targetInSight = result.hasTargets();
     inputs.numTagsVisible = result.getTargets().size();
@@ -43,7 +48,7 @@ public class VisionIOLumaP1 implements VisionIO {
       return;
     }
 
-    Optional<EstimatedRobotPose> estimated = poseEstimator.update(result);
+    Optional<EstimatedRobotPose> estimated = poseEstimator.estimateCoprocMultiTagPose(result);
     if (estimated.isPresent()) {
       EstimatedRobotPose pose = estimated.get();
       inputs.hasPoseEstimate = true;
