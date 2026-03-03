@@ -88,4 +88,22 @@ public interface TurretIO {
    * sequence when the limit switch trips.
    */
   default void zeroEncoder() {}
+
+  /**
+   * Seed the motor encoder to a known startup position instead of running a full homing sequence.
+   * Called once in the Turret constructor when software-zeroing is used.
+   *
+   * @param angleDeg The angle (degrees) to write into the encoder. Typically {@link
+   *     TurretConstants#kStartupAngleDeg}.
+   */
+  default void seedStartupPosition(double angleDeg) {}
+
+  /**
+   * Apply updated PID / motion-profile gains to the motor controller without a full config reset.
+   * Called by Turret.periodic() when tunable values change at runtime.
+   *
+   * @param kP Proportional gain.
+   * @param kD Derivative gain.
+   */
+  default void setPIDGains(double kP, double kD) {}
 }

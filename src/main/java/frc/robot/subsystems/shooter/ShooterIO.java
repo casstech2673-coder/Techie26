@@ -25,8 +25,7 @@ public interface ShooterIO {
   @AutoLog
   class ShooterIOInputs {
 
-    // Index 0 = top motor, index 1 = bottom motor.
-    // Arrays let us log both motors with a single field.
+    // Index 0 = left/leader motor, index 1 = right/follower motor.
 
     /** Flywheel velocity for each motor, in Rotations Per Minute (RPM). */
     public double[] flywheelVelocityRPM = new double[] {0.0, 0.0};
@@ -52,6 +51,11 @@ public interface ShooterIO {
      * kVelocityRecoveryThresholdRPM} dip.
      */
     public boolean velocityRecovered = false;
+
+    /** Current hood position in degrees (0° = fully down). */
+    public double hoodAngleDeg = 0.0;
+    /** Applied duty-cycle output to the hood motor (for diagnostics). */
+    public double hoodAppliedOutput = 0.0;
   }
 
   // ── Default (no-op) implementations ───────────────────────────────────────
@@ -94,4 +98,23 @@ public interface ShooterIO {
    * Shooter.Goal#IDLE}.
    */
   default void stop() {}
+
+  /**
+   * Apply updated PID / feed-forward gains to the leader motor controller without a full
+   * configuration reset. Called by Shooter.periodic() when LoggedNetworkNumber tunable values
+   * change at runtime.
+   */
+  default void setPIDGains(double kS, double kV, double kA, double kP) {}
+
+  /**
+   * Command the hood to a target angle.
+   *
+   * <p>0° = hood fully down (minimum launch angle). {@link ShooterConstants#kHoodMaxAngleDeg} =
+   * hood fully raised (maximum arc). Implementations must clamp to [{@link
+   * ShooterConstants#kHoodMinAngleDeg}, {@link ShooterConstants#kHoodMaxAngleDeg}] before sending
+   * to the actuator.
+   *
+   * @param angleDeg Target hood position in degrees.
+   */
+  default void setHoodAngle(double angleDeg) {}
 }

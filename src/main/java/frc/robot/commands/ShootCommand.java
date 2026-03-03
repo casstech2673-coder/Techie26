@@ -9,100 +9,41 @@ import frc.robot.superstructure.Superstructure;
 import frc.robot.superstructure.SuperstructureState;
 
 /**
- * ShootCommand — driver-initiated shooting sequence.
+ * ShootCommand — compatibility alias for {@link AimAndShootCommand}.
  *
- * <p>This command uses the "Request" pattern: - It tells {@link Superstructure} what STATE to be
- * in. - The Superstructure's periodic() handles all the logic. - This command only manages the
- * lifecycle (start / end conditions).
+ * <p>Requests {@link SuperstructureState#AIM_AND_SHOOT} for the duration the button is held. Prefer
+ * {@link AimAndShootCommand} for new bindings.
  *
- * <p>This is intentionally thin. Commands should NOT contain shooting logic; that lives in
- * Superstructure.periodic(). Commands are just triggers.
- *
- * <p>Usage in RobotContainer:
+ * <p>Usage:
  *
  * <pre>
- *   // Hold right bumper to shoot:
- *   controller.rightBumper()
- *       .whileTrue(new ShootCommand(superstructure));
+ *   controller.rightTrigger(0.5).whileTrue(new ShootCommand(superstructure));
  * </pre>
- *
- * <p>State lifecycle: - initialize(): Request PRE_SHOOT (begin spin-up) - execute(): Superstructure
- * auto-transitions through PRE_SHOOT → STATIONARY/MOVING → SHOOTING - end(): Request IDLE (spin
- * down, turret stow) - isFinished(): Never finishes early (button-held pattern)
  */
 public class ShootCommand extends Command {
 
   private final Superstructure superstructure;
 
-  /**
-   * @param superstructure The robot's Superstructure (air traffic controller). NOTE: This command
-   *     does NOT require individual subsystems — Superstructure owns them; requiring Superstructure
-   *     is sufficient if Superstructure is declared as a requirement.
-   */
   public ShootCommand(Superstructure superstructure) {
     this.superstructure = superstructure;
-    // PSEUDOCODE:
-    // addRequirements(superstructure);
-    // If Superstructure extends SubsystemBase and is registered, add it as a requirement.
-    // This prevents other commands from using the superstructure simultaneously.
+    addRequirements(superstructure);
   }
 
   @Override
   public void initialize() {
-    // PSEUDOCODE:
-    //
-    // Request spin-up. Superstructure.periodic() will:
-    //   1. Spin up the flywheel.
-    //   2. Start tracking with vision.
-    //   3. Enable hopper jiggle.
-    //   4. Auto-transition to STATIONARY or MOVING shot when ready.
-    //
-    // superstructure.setGoal(SuperstructureState.PRE_SHOOT);
-    superstructure.setGoal(SuperstructureState.PRE_SHOOT);
+    superstructure.setGoal(SuperstructureState.AIM_AND_SHOOT);
   }
 
   @Override
-  public void execute() {
-    // PSEUDOCODE — nothing needed here:
-    //
-    // Superstructure.periodic() runs automatically via the CommandScheduler.
-    // It handles ALL the state transitions internally (PRE_SHOOT → SHOOTING).
-    // We just hold the goal — the superstructure will fire when ready.
-    //
-    // Optional: override the shoot trigger based on driver input
-    // (e.g., driver must confirm the shot with a second button):
-    //   if (driverConfirmsShot && superstructure.isSystemReady()) {
-    //       // Superstructure already auto-fires when isReadyToFire() is true.
-    //       // No action needed here unless you want a MANUAL fire override.
-    //   }
-  }
+  public void execute() {}
 
   @Override
   public void end(boolean interrupted) {
-    // PSEUDOCODE:
-    //
-    // Whether the command ends normally or is interrupted (button released),
-    // return to IDLE state.
-    //   - Flywheels coast to stop.
-    //   - Turret stows.
-    //   - Hopper jiggle stops.
-    //
-    // superstructure.setGoal(SuperstructureState.IDLE);
     superstructure.setGoal(SuperstructureState.IDLE);
   }
 
   @Override
   public boolean isFinished() {
-    // PSEUDOCODE:
-    //
-    // This is a "hold-button" command — it runs as long as the button is held.
-    // Return false to never self-terminate.
-    //
-    // ALTERNATIVE: Return true after a SHOOTING state completes (one-shot):
-    //   return superstructure.getActiveState() == SuperstructureState.IDLE
-    //          && previousState == SuperstructureState.SHOOTING;
-    //
-    // For now: simple hold pattern.
     return false;
   }
 }

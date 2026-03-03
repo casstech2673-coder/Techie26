@@ -15,12 +15,12 @@ public class ShooterIOSim implements ShooterIO {
 
   private static final double kMOI = 0.003; // kg·m²
 
-  private final DCMotorSim topSim =
+  private final DCMotorSim leftSim =
       new DCMotorSim(
           LinearSystemId.createDCMotorSystem(
               DCMotor.getKrakenX60Foc(1), kMOI, ShooterConstants.kShooterGearRatio),
           DCMotor.getKrakenX60Foc(1));
-  private final DCMotorSim bottomSim =
+  private final DCMotorSim rightSim =
       new DCMotorSim(
           LinearSystemId.createDCMotorSystem(
               DCMotor.getKrakenX60Foc(1), kMOI, ShooterConstants.kShooterGearRatio),
@@ -28,42 +28,42 @@ public class ShooterIOSim implements ShooterIO {
 
   private final SimpleMotorFeedforward ff =
       new SimpleMotorFeedforward(ShooterConstants.kFlywheelKs, ShooterConstants.kFlywheelKv);
-  private final PIDController topPID = new PIDController(ShooterConstants.kFlywheelKp, 0, 0);
-  private final PIDController bottomPID = new PIDController(ShooterConstants.kFlywheelKp, 0, 0);
+  private final PIDController leftPID = new PIDController(ShooterConstants.kFlywheelKp, 0, 0);
+  private final PIDController rightPID = new PIDController(ShooterConstants.kFlywheelKp, 0, 0);
 
-  private double topApplied = 0.0;
-  private double bottomApplied = 0.0;
+  private double leftApplied = 0.0;
+  private double rightApplied = 0.0;
   private boolean closedLoop = false;
-  private double topSetpoint = 0.0;
-  private double bottomSetpoint = 0.0;
+  private double leftSetpoint = 0.0;
+  private double rightSetpoint = 0.0;
 
   @Override
   public void updateInputs(ShooterIOInputs inputs) {
     if (closedLoop) {
-      topApplied =
+      leftApplied =
           MathUtil.clamp(
-              ff.calculate(topSetpoint / 60.0)
-                  + topPID.calculate(topSim.getAngularVelocityRPM(), topSetpoint),
+              ff.calculate(leftSetpoint / 60.0)
+                  + leftPID.calculate(leftSim.getAngularVelocityRPM(), leftSetpoint),
               -12.0,
               12.0);
-      bottomApplied =
+      rightApplied =
           MathUtil.clamp(
-              ff.calculate(bottomSetpoint / 60.0)
-                  + bottomPID.calculate(bottomSim.getAngularVelocityRPM(), bottomSetpoint),
+              ff.calculate(rightSetpoint / 60.0)
+                  + rightPID.calculate(rightSim.getAngularVelocityRPM(), rightSetpoint),
               -12.0,
               12.0);
     }
-    topSim.setInputVoltage(topApplied);
-    bottomSim.setInputVoltage(bottomApplied);
-    topSim.update(0.02);
-    bottomSim.update(0.02);
+    leftSim.setInputVoltage(leftApplied);
+    rightSim.setInputVoltage(rightApplied);
+    leftSim.update(0.02);
+    rightSim.update(0.02);
 
-    inputs.flywheelVelocityRPM[0] = topSim.getAngularVelocityRPM();
-    inputs.flywheelVelocityRPM[1] = bottomSim.getAngularVelocityRPM();
-    inputs.flywheelAppliedVolts[0] = topApplied;
-    inputs.flywheelAppliedVolts[1] = bottomApplied;
-    inputs.statorCurrentAmps[0] = Math.abs(topSim.getCurrentDrawAmps());
-    inputs.statorCurrentAmps[1] = Math.abs(bottomSim.getCurrentDrawAmps());
+    inputs.flywheelVelocityRPM[0] = leftSim.getAngularVelocityRPM();
+    inputs.flywheelVelocityRPM[1] = rightSim.getAngularVelocityRPM();
+    inputs.flywheelAppliedVolts[0] = leftApplied;
+    inputs.flywheelAppliedVolts[1] = rightApplied;
+    inputs.statorCurrentAmps[0] = Math.abs(leftSim.getCurrentDrawAmps());
+    inputs.statorCurrentAmps[1] = Math.abs(rightSim.getCurrentDrawAmps());
     inputs.supplyCurrentAmps[0] = inputs.statorCurrentAmps[0];
     inputs.supplyCurrentAmps[1] = inputs.statorCurrentAmps[1];
     inputs.motorTempCelsius[0] = 25.0;
@@ -71,33 +71,35 @@ public class ShooterIOSim implements ShooterIO {
     inputs.motorConnected[0] = true;
     inputs.motorConnected[1] = true;
     inputs.velocityRecovered = false;
+    inputs.hoodAngleDeg = 0.0;
+    inputs.hoodAppliedOutput = 0.0;
   }
 
   @Override
   public void setFlywheelVelocity(double rpm) {
     closedLoop = true;
-    topSetpoint = rpm;
-    bottomSetpoint = rpm;
+    leftSetpoint = rpm;
+    rightSetpoint = rpm;
   }
 
   @Override
   public void setFlywheelVoltage(double volts) {
     closedLoop = false;
-    topApplied = MathUtil.clamp(volts, -12.0, 12.0);
-    bottomApplied = MathUtil.clamp(volts, -12.0, 12.0);
+    leftApplied = MathUtil.clamp(volts, -12.0, 12.0);
+    rightApplied = MathUtil.clamp(volts, -12.0, 12.0);
   }
 
   @Override
-  public void setFlywheelVelocityIndependent(double topRPM, double bottomRPM) {
+  public void setFlywheelVelocityIndependent(double leftRPM, double rightRPM) {
     closedLoop = true;
-    topSetpoint = topRPM;
-    bottomSetpoint = bottomRPM;
+    leftSetpoint = leftRPM;
+    rightSetpoint = rightRPM;
   }
 
   @Override
   public void stop() {
     closedLoop = false;
-    topApplied = 0.0;
-    bottomApplied = 0.0;
+    leftApplied = 0.0;
+    rightApplied = 0.0;
   }
 }

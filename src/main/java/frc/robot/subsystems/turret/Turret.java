@@ -28,22 +28,36 @@ public class Turret extends SubsystemBase {
   private boolean isWrappingFlag = false;
   private boolean hasHomed = false;
 
-  @SuppressWarnings("unused")
   private static final LoggedNetworkNumber tunableKp =
       new LoggedNetworkNumber("Turret/kP", TurretConstants.kTurretKp);
-
-  @SuppressWarnings("unused")
   private static final LoggedNetworkNumber tunableKd =
       new LoggedNetworkNumber("Turret/kD", TurretConstants.kTurretKd);
 
+  // Track last-applied PID values to avoid re-applying unchanged gains every loop
+  private double lastKp = TurretConstants.kTurretKp;
+  private double lastKd = TurretConstants.kTurretKd;
+
   public Turret(TurretIO io) {
     this.io = io;
+    // Software-zero the encoder to the known startup position instead of a homing sequence.
+    // The robot is always placed at the same orientation before enable.
+    io.seedStartupPosition(TurretConstants.kStartupAngleDeg);
+    hasHomed = true;
   }
 
   @Override
   public void periodic() {
     io.updateInputs(inputs);
     Logger.processInputs("Turret", inputs);
+
+    // Apply PID gains to hardware only when tunable values change
+    double kp = tunableKp.get();
+    double kd = tunableKd.get();
+    if (kp != lastKp || kd != lastKd) {
+      io.setPIDGains(kp, kd);
+      lastKp = kp;
+      lastKd = kd;
+    }
 
     switch (currentGoal) {
       case HOMING -> executeHoming();

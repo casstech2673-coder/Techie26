@@ -7,6 +7,7 @@ package frc.robot.subsystems.turret;
 import com.ctre.phoenix6.BaseStatusSignal;
 import com.ctre.phoenix6.StatusSignal;
 import com.ctre.phoenix6.configs.CANcoderConfiguration;
+import com.ctre.phoenix6.configs.Slot0Configs;
 import com.ctre.phoenix6.configs.TalonFXConfiguration;
 import com.ctre.phoenix6.controls.MotionMagicVoltage;
 import com.ctre.phoenix6.controls.NeutralOut;
@@ -113,5 +114,18 @@ public class TurretIOTalonFX implements TurretIO {
   @Override
   public void zeroEncoder() {
     motor.setPosition(TurretConstants.kMinAngleDeg / 360.0);
+  }
+
+  @Override
+  public void seedStartupPosition(double angleDeg) {
+    motor.setPosition(angleDeg / 360.0);
+  }
+
+  @Override
+  public void setPIDGains(double kP, double kD) {
+    var slot0 = new Slot0Configs();
+    slot0.kP = kP;
+    slot0.kD = kD;
+    motor.getConfigurator().apply(slot0);
   }
 }

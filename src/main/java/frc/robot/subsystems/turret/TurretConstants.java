@@ -4,6 +4,8 @@
 
 package frc.robot.subsystems.turret;
 
+import edu.wpi.first.math.geometry.Translation2d;
+
 /**
  * Constants for the Turret subsystem.
  *
@@ -70,4 +72,16 @@ public final class TurretConstants {
   public static final double kTurretKd = 0.2; // D gain (dampens oscillation)
   public static final double kTurretMaxVelocityDegS = 300.0; // Motion profile max velocity
   public static final double kTurretMaxAccelDegS2 = 600.0; // Motion profile max acceleration
+
+  // ── Startup Software Zeroing ───────────────────────────────────────────────
+  // Instead of a homing sequence, the robot is placed in a known starting configuration.
+  // The encoder is seeded to this value in the IO constructor.
+  public static final double kStartupAngleDeg = 90.0;
+
+  // ── Turret Pivot Offset from Robot Center ──────────────────────────────────
+  // Vector from the robot's geometric center to the turret pivot point, expressed
+  // in the robot's own coordinate frame (X = forward, Y = left).
+  // Used to compute the exact turret position on the field for precise angle-to-hub math.
+  // *** UPDATE with physical measurements from the robot CAD. ***
+  public static final Translation2d kTurretOffsetFromRobotCenter = new Translation2d(0.0, 0.0);
 }

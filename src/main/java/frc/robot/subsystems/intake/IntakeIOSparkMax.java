@@ -15,8 +15,9 @@ import com.revrobotics.spark.SparkMax;
 import com.revrobotics.spark.config.SparkBaseConfig.IdleMode;
 import com.revrobotics.spark.config.SparkFlexConfig;
 import com.revrobotics.spark.config.SparkMaxConfig;
+import edu.wpi.first.math.MathUtil;
+import edu.wpi.first.math.controller.PIDController;
 import edu.wpi.first.math.filter.Debouncer;
-import edu.wpi.first.wpilibj.DigitalInput;
 import java.util.function.DoubleSupplier;
 
 public class IntakeIOSparkMax implements IntakeIO {
@@ -25,23 +26,21 @@ public class IntakeIOSparkMax implements IntakeIO {
       new SparkMax(IntakeConstants.kIntakeMotorCanId, MotorType.kBrushless);
   private final SparkFlex hopperMotor =
       new SparkFlex(IntakeConstants.kHopperMotorCanId, MotorType.kBrushless);
-  private final SparkMax kickerMotor =
-      new SparkMax(IntakeConstants.kKickerMotorCanId, MotorType.kBrushless);
+  private final SparkMax armMotor =
+      new SparkMax(IntakeConstants.kArmMotorCanId, MotorType.kBrushless);
 
   private final RelativeEncoder intakeEncoder = intakeMotor.getEncoder();
   private final RelativeEncoder hopperEncoder = hopperMotor.getEncoder();
-  private final RelativeEncoder kickerEncoder = kickerMotor.getEncoder();
+  private final RelativeEncoder armEncoder = armMotor.getEncoder();
 
-  private final DigitalInput intakeBeamBreak =
-      new DigitalInput(IntakeConstants.kIntakeBeamBreakPort);
-  private final DigitalInput hopperBeamBreak =
-      new DigitalInput(IntakeConstants.kHopperBeamBreakPort);
+  // RIO-side position PID for the arm pivot (keeps logic in Java for AKit replay)
+  private final PIDController armPID = new PIDController(IntakeConstants.kArmKp, 0, 0);
 
   private final Debouncer intakeConnectedDebounce =
       new Debouncer(0.5, Debouncer.DebounceType.kFalling);
   private final Debouncer hopperConnectedDebounce =
       new Debouncer(0.5, Debouncer.DebounceType.kFalling);
-  private final Debouncer kickerConnectedDebounce =
+  private final Debouncer armConnectedDebounce =
       new Debouncer(0.5, Debouncer.DebounceType.kFalling);
 
   public IntakeIOSparkMax() {
@@ -79,23 +78,31 @@ public class IntakeIOSparkMax implements IntakeIO {
             hopperMotor.configure(
                 hopperConfig, ResetMode.kResetSafeParameters, PersistMode.kPersistParameters));
 
-    var kickerConfig = new SparkMaxConfig();
-    kickerConfig
-        .inverted(true)
-        .idleMode(IdleMode.kBrake)
-        .smartCurrentLimit(IntakeConstants.kKickerSmartCurrentLimit);
-    kickerConfig
+    var armConfig = new SparkMaxConfig();
+    armConfig.idleMode(IdleMode.kBrake).smartCurrentLimit(IntakeConstants.kArmSmartCurrentLimit);
+    // Position conversion: motor rotations → degrees of arm travel
+    armConfig
+        .encoder
+        .positionConversionFactor(360.0 / IntakeConstants.kArmGearRatio)
+        .velocityConversionFactor(360.0 / IntakeConstants.kArmGearRatio / 60.0);
+    armConfig
         .signals
+        .primaryEncoderPositionAlwaysOn(true)
+        .primaryEncoderPositionPeriodMs(20)
         .primaryEncoderVelocityAlwaysOn(true)
         .primaryEncoderVelocityPeriodMs(20)
         .appliedOutputPeriodMs(20)
         .outputCurrentPeriodMs(20);
     tryUntilOk(
-        kickerMotor,
+        armMotor,
         5,
         () ->
-            kickerMotor.configure(
-                kickerConfig, ResetMode.kResetSafeParameters, PersistMode.kPersistParameters));
+            armMotor.configure(
+                armConfig, ResetMode.kResetSafeParameters, PersistMode.kPersistParameters));
+
+    // Seed arm encoder to 0° — robot always starts with arm fully down
+    armEncoder.setPosition(0.0);
+    armPID.setTolerance(1.0); // ±1° tolerance
   }
 
   @Override
@@ -119,16 +126,8 @@ public class IntakeIOSparkMax implements IntakeIO {
     inputs.motorConnected[1] = hopperConnectedDebounce.calculate(!sparkStickyFault);
 
     sparkStickyFault = false;
-    ifOk(kickerMotor, kickerEncoder::getVelocity, (v) -> inputs.kickerVelocityRPM = v);
-    ifOk(
-        kickerMotor,
-        new DoubleSupplier[] {kickerMotor::getAppliedOutput, kickerMotor::getBusVoltage},
-        (v) -> inputs.kickerAppliedOutput = v[0]);
-    ifOk(kickerMotor, kickerMotor::getOutputCurrent, (v) -> inputs.kickerCurrentAmps = v);
-    inputs.motorConnected[2] = kickerConnectedDebounce.calculate(!sparkStickyFault);
-
-    inputs.intakeBeamBreakTripped = !intakeBeamBreak.get();
-    inputs.hopperBeamBreakTripped = !hopperBeamBreak.get();
+    ifOk(armMotor, armEncoder::getPosition, (v) -> inputs.armPositionDeg = v);
+    inputs.motorConnected[2] = armConnectedDebounce.calculate(!sparkStickyFault);
   }
 
   @Override
@@ -142,14 +141,16 @@ public class IntakeIOSparkMax implements IntakeIO {
   }
 
   @Override
-  public void setKickerOutput(double output) {
-    kickerMotor.set(output);
+  public void setArmPosition(double angleDeg) {
+    double clamped = MathUtil.clamp(angleDeg, 0.0, IntakeConstants.kArmMaxDeg);
+    double output = MathUtil.clamp(armPID.calculate(armEncoder.getPosition(), clamped), -1.0, 1.0);
+    armMotor.set(output);
   }
 
   @Override
   public void stopAll() {
     intakeMotor.stopMotor();
     hopperMotor.stopMotor();
-    kickerMotor.stopMotor();
+    armMotor.stopMotor();
   }
 }

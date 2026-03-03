@@ -255,9 +255,9 @@ public class Drive extends SubsystemBase {
     return states;
   }
 
-  /** Returns the measured chassis speeds of the robot. */
+  /** Returns the measured chassis speeds of the robot (field-relative). */
   @AutoLogOutput(key = "SwerveChassisSpeeds/Measured")
-  private ChassisSpeeds getChassisSpeeds() {
+  public ChassisSpeeds getChassisSpeeds() {
     return kinematics.toChassisSpeeds(getModuleStates());
   }
 
@@ -302,6 +302,25 @@ public class Drive extends SubsystemBase {
       Matrix<N3, N1> visionMeasurementStdDevs) {
     poseEstimator.addVisionMeasurement(
         visionRobotPoseMeters, timestampSeconds, visionMeasurementStdDevs);
+  }
+
+  /**
+   * Adds a vision measurement using a plain double[] for standard deviations. Matches the {@link
+   * frc.robot.subsystems.vision.Vision.PoseConsumer} interface signature.
+   *
+   * @param visionRobotPoseMeters Estimated robot pose from vision.
+   * @param timestampSeconds Capture timestamp (seconds).
+   * @param stdDevs Array of [xStdDev, yStdDev, thetaStdDev].
+   */
+  public void addVisionMeasurement(
+      Pose2d visionRobotPoseMeters, double timestampSeconds, double[] stdDevs) {
+    poseEstimator.addVisionMeasurement(
+        visionRobotPoseMeters,
+        timestampSeconds,
+        edu.wpi.first.math.MatBuilder.fill(
+            edu.wpi.first.math.numbers.N3.instance,
+            edu.wpi.first.math.numbers.N1.instance,
+            stdDevs));
   }
 
   /** Returns the maximum linear speed in meters per sec. */

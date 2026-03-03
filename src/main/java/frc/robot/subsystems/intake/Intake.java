@@ -4,6 +4,7 @@
 
 package frc.robot.subsystems.intake;
 
+import edu.wpi.first.math.MathUtil;
 import edu.wpi.first.wpilibj.Timer;
 import edu.wpi.first.wpilibj2.command.SubsystemBase;
 import org.littletonrobotics.junction.AutoLogOutput;
@@ -15,8 +16,14 @@ public class Intake extends SubsystemBase {
     IDLE,
     INTAKING,
     KICK,
-    JIGGLE,
-    EJECT
+    AGITATE,
+    EJECT,
+    /** Intake roller only — no hopper, no arm movement. Operator LT override. */
+    ROLLER_ONLY,
+    /** Operator Y held: slowly drives arm toward kArmMaxDeg. */
+    MANUAL_ARM_UP,
+    /** Operator A held: slowly drives arm toward 0°. */
+    MANUAL_ARM_DOWN
   }
 
   private final IntakeIO io;
@@ -24,12 +31,15 @@ public class Intake extends SubsystemBase {
 
   private Goal currentGoal = Goal.IDLE;
 
-  private final Timer jiggleTimer = new Timer();
-  private boolean jigglePhaseOn = true;
+  private final Timer agitateTimer = new Timer();
+  private boolean agitateArmUp = false;
+
+  // Tracks commanded arm angle for incremental manual control.
+  private double manualArmAngleDeg = 0.0;
 
   public Intake(IntakeIO io) {
     this.io = io;
-    jiggleTimer.start();
+    agitateTimer.start();
   }
 
   @Override
@@ -40,70 +50,101 @@ public class Intake extends SubsystemBase {
     switch (currentGoal) {
       case IDLE -> {
         io.stopAll();
-        jiggleTimer.stop();
-        jiggleTimer.reset();
-        jigglePhaseOn = true;
+        io.setArmPosition(IntakeConstants.kArmIdleDeg);
+        agitateTimer.stop();
+        agitateTimer.reset();
+        agitateArmUp = false;
       }
       case INTAKING -> {
         io.setIntakeOutput(IntakeConstants.kIntakeSpeed);
-        io.setHopperOutput(inputs.hopperBeamBreakTripped ? 0.0 : IntakeConstants.kHopperFeedSpeed);
+        io.setHopperOutput(IntakeConstants.kHopperFeedSpeed);
+        io.setArmPosition(IntakeConstants.kArmIdleDeg);
       }
       case KICK -> {
-        io.setKickerOutput(IntakeConstants.kKickerFeedSpeed);
-        io.setHopperOutput(IntakeConstants.kHopperFeedSpeed);
+        io.setHopperOutput(IntakeConstants.kHopperKickSpeed);
+        io.setIntakeOutput(0.0);
+        io.setArmPosition(IntakeConstants.kArmIdleDeg);
       }
-      case JIGGLE -> executeJiggle();
+      case AGITATE -> executeAgitate();
       case EJECT -> {
         io.setIntakeOutput(IntakeConstants.kEjectSpeed);
-        io.setHopperOutput(-IntakeConstants.kHopperFeedSpeed);
-        io.setKickerOutput(IntakeConstants.kKickerEjectSpeed);
+        io.setHopperOutput(IntakeConstants.kHopperEjectSpeed);
+        io.setArmPosition(IntakeConstants.kArmIdleDeg);
+      }
+      case ROLLER_ONLY -> {
+        io.setIntakeOutput(IntakeConstants.kIntakeSpeed);
+        io.setHopperOutput(0.0);
+        io.setArmPosition(IntakeConstants.kArmIdleDeg);
+      }
+      case MANUAL_ARM_UP -> {
+        manualArmAngleDeg =
+            MathUtil.clamp(
+                manualArmAngleDeg + IntakeConstants.kArmManualDegPerSec * 0.020,
+                0.0,
+                IntakeConstants.kArmMaxDeg);
+        io.setArmPosition(manualArmAngleDeg);
+        io.setIntakeOutput(0.0);
+        io.setHopperOutput(0.0);
+      }
+      case MANUAL_ARM_DOWN -> {
+        manualArmAngleDeg =
+            MathUtil.clamp(
+                manualArmAngleDeg - IntakeConstants.kArmManualDegPerSec * 0.020,
+                0.0,
+                IntakeConstants.kArmMaxDeg);
+        io.setArmPosition(manualArmAngleDeg);
+        io.setIntakeOutput(0.0);
+        io.setHopperOutput(0.0);
       }
     }
 
-    Logger.recordOutput("Intake/Goal", currentGoal.name());
-    Logger.recordOutput("Intake/JigglePhaseOn", jigglePhaseOn);
+    Logger.recordOutput("Intake/AgitateArmUp", agitateArmUp);
+    Logger.recordOutput("Intake/ArmPositionDeg", inputs.armPositionDeg);
   }
 
-  private void executeJiggle() {
-    if (jigglePhaseOn) {
+  /** Arm oscillates between down and up to shake loose jams; hopper runs at slow speed. */
+  private void executeAgitate() {
+    if (!agitateArmUp) {
+      io.setArmPosition(IntakeConstants.kArmAgitateDownDeg);
       io.setHopperOutput(IntakeConstants.kHopperSlowSpeed);
       io.setIntakeOutput(0.0);
-      io.setKickerOutput(0.0);
-      if (jiggleTimer.hasElapsed(IntakeConstants.kJiggleOnDurationSec)) {
-        jigglePhaseOn = false;
-        jiggleTimer.reset();
+      if (agitateTimer.hasElapsed(IntakeConstants.kArmAgitateDownDurationSec)) {
+        agitateArmUp = true;
+        agitateTimer.reset();
       }
     } else {
+      io.setArmPosition(IntakeConstants.kArmAgitateUpDeg);
       io.setHopperOutput(0.0);
       io.setIntakeOutput(0.0);
-      io.setKickerOutput(0.0);
-      if (jiggleTimer.hasElapsed(IntakeConstants.kJiggleOffDurationSec)) {
-        jigglePhaseOn = true;
-        jiggleTimer.reset();
+      if (agitateTimer.hasElapsed(IntakeConstants.kArmAgitateUpDurationSec)) {
+        agitateArmUp = false;
+        agitateTimer.reset();
       }
     }
   }
 
   public void setGoal(Goal goal) {
-    if (goal != currentGoal && goal != Goal.JIGGLE) {
-      jiggleTimer.reset();
-      jigglePhaseOn = true;
+    if (goal != currentGoal) {
+      if (goal != Goal.AGITATE) {
+        agitateTimer.reset();
+        agitateArmUp = false;
+      }
+      // Sync manual arm setpoint to actual position on entry to avoid jumps.
+      if (goal == Goal.MANUAL_ARM_UP || goal == Goal.MANUAL_ARM_DOWN) {
+        manualArmAngleDeg = inputs.armPositionDeg;
+      }
     }
     this.currentGoal = goal;
-  }
-
-  @AutoLogOutput(key = "Intake/HasPieceAtIntake")
-  public boolean hasPieceAtIntake() {
-    return inputs.intakeBeamBreakTripped;
-  }
-
-  @AutoLogOutput(key = "Intake/HasPieceIndexed")
-  public boolean hasPieceIndexed() {
-    return inputs.hopperBeamBreakTripped;
   }
 
   @AutoLogOutput(key = "Intake/Goal")
   public Goal getGoal() {
     return currentGoal;
+  }
+
+  /** Current arm pivot position in degrees (0° = fully down). */
+  @AutoLogOutput(key = "Intake/ArmPositionDeg")
+  public double getArmPositionDeg() {
+    return inputs.armPositionDeg;
   }
 }

@@ -4,50 +4,45 @@
 
 package frc.robot.subsystems.intake;
 
-/**
- * Constants for the Intake / Kicker / Hopper subsystem.
- *
- * <p>Hardware: - Intake roller: NEO 1.1 on SparkMax (ground-facing, pulls game piece in) - Hopper
- * belts: NEO 1.1 on SparkFlex (carries game piece from intake → shooter) - Kicker: NEO 1.1 on
- * SparkMax (feeds game piece into the flywheel gap)
- *
- * <p>Sensors: - Intake beam break: detects when a game piece enters the intake. - Hopper beam
- * break: detects when a game piece is at the handoff to the shooter.
- *
- * <p>The "Jiggle" pattern: When the robot is stationary and has a piece but is NOT yet commanded to
- * shoot, the hopper runs a periodic toggle to prevent the game piece from resting on a seam and
- * causing a feed failure.
- */
+/** Constants for intake roller, hopper/kicker belt (single motor), and arm pivot. */
 public final class IntakeConstants {
 
   // ── Motor CAN IDs ────────────────────────────────────────────────────────
   public static final int kIntakeMotorCanId = 40;
-  public static final int kHopperMotorCanId = 41;
-  public static final int kKickerMotorCanId = 42;
+  public static final int kHopperMotorCanId = 41; // also serves as kicker (same motor)
+  public static final int kArmMotorCanId = 43;
 
-  // ── Duty Cycle Setpoints (percent output, -1.0 to +1.0) ──────────────────
-  public static final double kIntakeSpeed = 0.85; // Full-send intake
-  public static final double kEjectSpeed = -0.85; // Reverse to eject
-  public static final double kHopperFeedSpeed = 0.6; // Normal hopper index speed
-  public static final double kHopperSlowSpeed = 0.2; // Slow advance during jiggle ON phase
-  public static final double kKickerFeedSpeed = 0.9; // Feed the game piece into shooter
-  public static final double kKickerEjectSpeed = -0.9; // Reverse kicker for ejection
+  // ── Duty Cycle Setpoints ────────────────────────────────────────────────
+  public static final double kIntakeSpeed = 0.85;
+  public static final double kEjectSpeed = -0.85;
+  public static final double kHopperFeedSpeed = 0.60;
+  public static final double kHopperSlowSpeed = 0.20;
+  public static final double kHopperKickSpeed = 0.90;
+  public static final double kHopperEjectSpeed = -0.90;
 
-  // ── Jiggle Timer Parameters ───────────────────────────────────────────────
-  // "Jiggle" prevents the game piece from sitting stationary on a belt seam.
-  // The hopper alternates between slow-forward and full-stop.
-  //
-  // Only active when: SuperstructureState == STATIONARY_SHOOT && piece is indexed.
-  public static final double kJiggleOnDurationSec = 0.15; // How long to run forward
-  public static final double kJiggleOffDurationSec = 0.35; // How long to pause
-  // Full jiggle cycle period = kJiggleOnDurationSec + kJiggleOffDurationSec = 0.5 s
+  // ── Arm Positions (degrees, 0° = down) ──────────────────────────────────
+  public static final double kArmIdleDeg = 0.0;
+  public static final double kArmAgitateDownDeg = 0.0;
+  public static final double kArmAgitateUpDeg = 30.0;
 
-  // ── Current Limits (NEO on SparkMax) ─────────────────────────────────────
-  public static final int kIntakeSmartCurrentLimit = 40; // Amps
-  public static final int kHopperSmartCurrentLimit = 30; // Amps
-  public static final int kKickerSmartCurrentLimit = 35; // Amps
+  // ── Agitate Timing ───────────────────────────────────────────────────────
+  public static final double kArmAgitateUpDurationSec = 0.30;
+  public static final double kArmAgitateDownDurationSec = 0.30;
 
-  // ── DIO Port Assignments (beam break sensors) ─────────────────────────────
-  public static final int kIntakeBeamBreakPort = 0; // DIO channel 0
-  public static final int kHopperBeamBreakPort = 1; // DIO channel 1
+  // ── Manual Arm Control (Operator Y/A buttons) ────────────────────────────
+  /** Rate at which the arm moves when Y (up) or A (down) is held (°/s). */
+  public static final double kArmManualDegPerSec = 30.0;
+  /** Upper travel limit for manual arm control (degrees). */
+  public static final double kArmMaxDeg = 90.0;
+
+  // ── Arm Pivot Motor Position PID (SparkMax internal) ─────────────────────
+  /** Motor rotations per 1 degree of arm travel. *** Update from CAD. */
+  public static final double kArmGearRatio = 100.0;
+  /** SparkMax internal position PID proportional gain. *** Tune on robot. */
+  public static final double kArmKp = 0.1;
+
+  // ── Current Limits ────────────────────────────────────────────────────────
+  public static final int kIntakeSmartCurrentLimit = 40;
+  public static final int kHopperSmartCurrentLimit = 30;
+  public static final int kArmSmartCurrentLimit = 20;
 }
