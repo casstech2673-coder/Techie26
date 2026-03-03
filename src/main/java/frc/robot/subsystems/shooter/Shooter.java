@@ -88,7 +88,7 @@ public class Shooter extends SubsystemBase {
         io.setHoodAngle(ShooterConstants.kHoodIdleAngleDeg); // Hood returns to 0° when idle
       }
       case AIM_AND_SHOOT -> {
-        double rpm = customRPM > 0.0 ? customRPM : 4500.0; // fallback if table not ready
+        double rpm = customRPM > 0.0 ? customRPM : 2000.0; // fallback if table not ready
         io.setFlywheelVelocity(rpm);
         io.setHoodAngle(
             MathUtil.clamp(

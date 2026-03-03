@@ -151,7 +151,7 @@ public class Superstructure extends SubsystemBase {
         // ── IDLE ─────────────────────────────────────────────────────────────
       case IDLE -> {
         shooter.setGoal(Shooter.Goal.IDLE);
-        turret.setGoal(Turret.Goal.STOW);
+        turret.setGoal(Turret.Goal.HOLD);
         // Route through IntakeMode so operator LT/LB/Y/A work even when not shooting.
         applyIntakeMode(false);
       }
@@ -301,8 +301,8 @@ public class Superstructure extends SubsystemBase {
    *       (v ≈ 0) this degrades cleanly to a direct-aim shot.
    *   <li><b>Hood angle correction</b>: the hood angle from the lookup table assumes a stationary
    *       robot. When moving, the flywheel produces a different speed in the robot frame, changing
-   *       the vertical launch component. The angle is corrected via:
-   *       {@code sin(θ_adj) = sin(θ_base) × (baseBallSpeed / adjustedBallSpeed)}.
+   *       the vertical launch component. The angle is corrected via: {@code sin(θ_adj) =
+   *       sin(θ_base) × (baseBallSpeed / adjustedBallSpeed)}.
    * </ol>
    */
   private double[] computeAimAndShot(
@@ -384,14 +384,14 @@ public class Superstructure extends SubsystemBase {
     // ∴  sin(θ_adj) = sin(θ_base) × baseBallSpeed / adjustedBallSpeed.
     if (adjustedBallSpeed > 0.01) {
       double sinBase = Math.sin(Math.toRadians(hoodAngleDeg));
-      double sinAdjusted =
-          MathUtil.clamp(sinBase * (baseBallSpeed / adjustedBallSpeed), -1.0, 1.0);
+      double sinAdjusted = MathUtil.clamp(sinBase * (baseBallSpeed / adjustedBallSpeed), -1.0, 1.0);
       hoodAngleDeg = Math.toDegrees(Math.asin(sinAdjusted));
     }
 
     Logger.recordOutput("Superstructure/AimAndShot/DistanceM", distance);
     Logger.recordOutput("Superstructure/AimAndShot/LookupDistM", lookupDist);
-    Logger.recordOutput("Superstructure/AimAndShot/TofEnabled", ShooterConstants.kEnableTimeOfFlightPrediction);
+    Logger.recordOutput(
+        "Superstructure/AimAndShot/TofEnabled", ShooterConstants.kEnableTimeOfFlightPrediction);
     Logger.recordOutput("Superstructure/AimAndShot/BaseRPM", baseRPM);
     Logger.recordOutput("Superstructure/AimAndShot/AdjustedRPM", adjustedRPM);
     Logger.recordOutput("Superstructure/AimAndShot/BaseBallSpeedMps", baseBallSpeed);

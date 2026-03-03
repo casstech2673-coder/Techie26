@@ -36,10 +36,14 @@ public final class ShooterConstants {
   public static final double kVelocityRecoveryThresholdRPM = 200.0;
 
   // ── Feed-Forward & PID (flywheel) ─────────────────────────────────────────
-  public static final double kFlywheelKs = 0.25;
-  public static final double kFlywheelKv = 0.115;
-  public static final double kFlywheelKa = 0.01;
-  public static final double kFlywheelKp = 0.05;
+  // *** SAFE FIRST-RUN VALUES ***
+  // kV is the main term that makes the flywheel reach target speed — keep it non-zero.
+  // kP adds closed-loop correction on top of feedforward. Start near zero.
+  // kS = static friction voltage. Reduce until flywheel just barely overcomes friction.
+  public static final double kFlywheelKs = 0.05; // was 0.25 — reduce to near-zero first
+  public static final double kFlywheelKv = 0.115; // keep — this is the feedforward velocity gain
+  public static final double kFlywheelKa = 0.0; // was 0.01 — zero out acceleration FF for now
+  public static final double kFlywheelKp = 0.005; // was 0.05 — minimal correction
 
   // ── Hood Angle Limits ─────────────────────────────────────────────────────
   // 0° = hood fully down (flattest shot, shortest range).
@@ -54,8 +58,12 @@ public final class ShooterConstants {
    * Motor-to-hood gear ratio (motor rotations per 1 degree of hood travel). *** Update from CAD.
    */
   public static final double kHoodGearRatio = 50.0;
-  /** SparkMax internal position PID proportional gain. *** Tune on robot. */
-  public static final double kHoodKp = 0.05;
+  /**
+   * TalonFX MotionMagic position PID proportional gain. *** Tune on robot. kP units = V per
+   * rotation of error (after gear ratio). Start near zero. Original target value is ~0.05–0.2 once
+   * mechanism is verified.
+   */
+  public static final double kHoodKp = 0.005; // was 0.05 — very gentle first-run value
 
   // ── Passing Mode ──────────────────────────────────────────────────────────
   // Turret faces the Alliance Wall at global field heading of -180°.
@@ -82,15 +90,15 @@ public final class ShooterConstants {
    * Set to true to enable iterative TOF position prediction for moving shots.
    *
    * <p>When enabled, the lookup distance is iteratively adjusted to account for where the robot
-   * will be when the ball reaches the hub. This improves shot accuracy when moving radially
-   * toward or away from the hub (e.g., driving in during auto). Disable to revert to a pure
+   * will be when the ball reaches the hub. This improves shot accuracy when moving radially toward
+   * or away from the hub (e.g., driving in during auto). Disable to revert to a pure
    * distance-from-current-position lookup.
    */
   public static final boolean kEnableTimeOfFlightPrediction = true;
 
   /**
-   * Number of TOF prediction iterations. 1–2 is sufficient for convergence; more adds CPU cost
-   * with negligible accuracy gain.
+   * Number of TOF prediction iterations. 1–2 is sufficient for convergence; more adds CPU cost with
+   * negligible accuracy gain.
    */
   public static final int kTofIterations = 2;
 

@@ -8,9 +8,9 @@ package frc.robot.subsystems.intake;
 public final class IntakeConstants {
 
   // ── Motor CAN IDs ────────────────────────────────────────────────────────
-  public static final int kIntakeMotorCanId = 40;
-  public static final int kHopperMotorCanId = 41; // also serves as kicker (same motor)
-  public static final int kArmMotorCanId = 43;
+  public static final int kIntakeMotorCanId = 35;
+  public static final int kHopperMotorCanId = 41; // TODO update CAN for hopper
+  public static final int kArmMotorCanId = 43; // TODO update CAN for intake arm motor
 
   // ── Duty Cycle Setpoints ────────────────────────────────────────────────
   public static final double kIntakeSpeed = 0.85;
@@ -26,12 +26,12 @@ public final class IntakeConstants {
   public static final double kArmAgitateUpDeg = 30.0;
 
   // ── Agitate Timing ───────────────────────────────────────────────────────
-  public static final double kArmAgitateUpDurationSec = 0.30;
-  public static final double kArmAgitateDownDurationSec = 0.30;
+  public static final double kArmAgitateUpDurationSec = 0.60;
+  public static final double kArmAgitateDownDurationSec = 0.60;
 
   // ── Manual Arm Control (Operator Y/A buttons) ────────────────────────────
   /** Rate at which the arm moves when Y (up) or A (down) is held (°/s). */
-  public static final double kArmManualDegPerSec = 30.0;
+  public static final double kArmManualDegPerSec = 10.0;
   /** Upper travel limit for manual arm control (degrees). */
   public static final double kArmMaxDeg = 90.0;
 

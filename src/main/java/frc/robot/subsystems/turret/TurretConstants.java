@@ -68,15 +68,24 @@ public final class TurretConstants {
   public static final double kTurretGearRatio = 60.0; // Motor rotations per turret rotation
 
   // PID / Profile starting values (overridable via LoggedTunableNumber in Turret.java)
-  public static final double kTurretKp = 8.0; // P gain (output per degree of error)
-  public static final double kTurretKd = 0.2; // D gain (dampens oscillation)
+  // *** SAFE FIRST-RUN VALUES — increase kP gradually. ***
+  // kP units = Volts per degree of error (clamped to ±12V).
+  //   kP=0.05 → max 9V at 180° error, 0.5V at 10° error — very gentle.
+  //   kP=8.0  → full 12V at just 1.5° error — original aggressive value.
+  public static final double kTurretKp = 0.05; // Start here; target is ~4.0–8.0 after tuning
+  public static final double kTurretKd = 0.0; // Add damping only after kP is stable
   public static final double kTurretMaxVelocityDegS = 300.0; // Motion profile max velocity
   public static final double kTurretMaxAccelDegS2 = 600.0; // Motion profile max acceleration
 
   // ── Startup Software Zeroing ───────────────────────────────────────────────
   // Instead of a homing sequence, the robot is placed in a known starting configuration.
   // The encoder is seeded to this value in the IO constructor.
-  public static final double kStartupAngleDeg = 90.0;
+  //
+  // IMPORTANT: Place the turret physically facing straight forward (the robot's +X direction)
+  // before enabling. IDLE → STOW commands 0°, so if this value is 0.0 and the turret starts
+  // at 0°, nothing moves on first enable.
+  // *** Measure and confirm this matches the actual physical starting position. ***
+  public static final double kStartupAngleDeg = 0.0;
 
   // ── Turret Pivot Offset from Robot Center ──────────────────────────────────
   // Vector from the robot's geometric center to the turret pivot point, expressed
