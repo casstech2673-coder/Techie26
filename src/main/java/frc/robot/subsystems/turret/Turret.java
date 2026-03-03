@@ -69,10 +69,12 @@ public class Turret extends SubsystemBase {
       case STOW -> io.setTargetAngle(resolveWithWrapping(0.0));
     }
 
+    // "Turret/IsWrapping", "Turret/IsAligned", "Turret/CurrentAngleDeg", "Turret/HasHomed" are
+    // logged via @AutoLogOutput on their getter methods — do NOT repeat them here to avoid
+    // duplicate-key conflicts in AdvantageKit replay.
     Logger.recordOutput("Turret/Goal", currentGoal.name());
     Logger.recordOutput("Turret/RequestedAngleDeg", requestedTargetAngleDeg);
     Logger.recordOutput("Turret/ResolvedAngleDeg", resolvedTargetAngleDeg);
-    Logger.recordOutput("Turret/IsWrapping", isWrappingFlag);
   }
 
   private void executeHoming() {

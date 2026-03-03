@@ -77,6 +77,23 @@ public final class ShooterConstants {
 
   public static final double kManualHoodScaleDefault = 1.0;
 
+  // ── Time-of-Flight Prediction ─────────────────────────────────────────────
+  /**
+   * Set to true to enable iterative TOF position prediction for moving shots.
+   *
+   * <p>When enabled, the lookup distance is iteratively adjusted to account for where the robot
+   * will be when the ball reaches the hub. This improves shot accuracy when moving radially
+   * toward or away from the hub (e.g., driving in during auto). Disable to revert to a pure
+   * distance-from-current-position lookup.
+   */
+  public static final boolean kEnableTimeOfFlightPrediction = true;
+
+  /**
+   * Number of TOF prediction iterations. 1–2 is sufficient for convergence; more adds CPU cost
+   * with negligible accuracy gain.
+   */
+  public static final int kTofIterations = 2;
+
   // ── Distance → RPM Lookup Table ──────────────────────────────────────────
   // Key   = distance to hub (meters)
   // Value = flywheel RPM setpoint

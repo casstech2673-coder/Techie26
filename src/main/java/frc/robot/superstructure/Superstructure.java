@@ -292,13 +292,18 @@ public class Superstructure extends SubsystemBase {
    * <p>Returns [adjustedRPM, turretLeadAngleDeg, hoodAngleDeg].
    *
    * <ol>
-   *   <li>Distance from turret pivot to hub → base RPM + hood angle from lookup tables.
-   *   <li>Robot chassis velocity is subtracted from the required ball velocity to produce the
-   *       shooter vector (lead angle + RPM scaling for moving shots).
+   *   <li><b>Optional TOF position prediction</b> ({@link
+   *       ShooterConstants#kEnableTimeOfFlightPrediction}): iteratively estimates where the robot
+   *       will be when the ball reaches the hub and uses that predicted distance for RPM/hood
+   *       lookups. This improves accuracy when driving radially toward/away from the hub.
+   *   <li><b>Moving-shot vector math</b>: robot chassis velocity is subtracted from the required
+   *       ball velocity to produce the shooter vector (lead angle + RPM scaling). When stationary
+   *       (v ≈ 0) this degrades cleanly to a direct-aim shot.
+   *   <li><b>Hood angle correction</b>: the hood angle from the lookup table assumes a stationary
+   *       robot. When moving, the flywheel produces a different speed in the robot frame, changing
+   *       the vertical launch component. The angle is corrected via:
+   *       {@code sin(θ_adj) = sin(θ_base) × (baseBallSpeed / adjustedBallSpeed)}.
    * </ol>
-   *
-   * <p>When the robot is stationary (v ≈ 0) the lead angle equals the direct bearing and RPM
-   * matches the table exactly — no special-case code needed.
    */
   private double[] computeAimAndShot(
       Vision.TargetResult target,
@@ -319,9 +324,32 @@ public class Superstructure extends SubsystemBase {
     double distance = target.hasTarget() ? target.distanceToTargetMeters() : toTarget.getNorm();
     distance = Math.max(distance, 0.5); // guard against degenerate zero
 
-    double baseRPM = rpmTable.get(distance);
-    double hoodAngleDeg = hoodTable.get(distance);
+    Translation2d robotVelVec =
+        new Translation2d(speeds.vxMetersPerSecond, speeds.vyMetersPerSecond);
 
+    // ── Optional TOF Position Prediction ──────────────────────────────────────────────────────
+    // Iteratively predict where the robot will be when the ball reaches the hub (using ball
+    // flight time as a proxy for spin-up + flight latency). The resulting `lookupDist` drives
+    // RPM and base hood angle lookups so the robot pre-selects the right parameters for its
+    // future position — most useful when closing in on or backing away from the hub.
+    //
+    // The aim *direction* always uses the actual current turret position so the ball is physically
+    // aimed at the hub from where it is launched. Only the table-lookup distance is adjusted.
+    double lookupDist = distance;
+    if (ShooterConstants.kEnableTimeOfFlightPrediction) {
+      for (int i = 0; i < ShooterConstants.kTofIterations; i++) {
+        lookupDist = Math.max(lookupDist, 0.5);
+        double iterRPM = rpmTable.get(lookupDist);
+        double iterSpeed =
+            (iterRPM / 60.0) * (2.0 * Math.PI) * ShooterConstants.kFlywheelRadiusMeters;
+        double flightTime = lookupDist / iterSpeed;
+        Translation2d predictedTurretCenter = turretCenter.plus(robotVelVec.times(flightTime));
+        lookupDist = Math.max(hubPosition.minus(predictedTurretCenter).getNorm(), 0.5);
+      }
+    }
+
+    double baseRPM = rpmTable.get(lookupDist);
+    double hoodAngleDeg = hoodTable.get(lookupDist);
     double baseOmega = (baseRPM / 60.0) * (2.0 * Math.PI);
     double baseBallSpeed = baseOmega * ShooterConstants.kFlywheelRadiusMeters;
 
@@ -330,12 +358,10 @@ public class Superstructure extends SubsystemBase {
       return new double[] {baseRPM, target.targetAngleDeg(), hoodAngleDeg};
     }
 
-    // Required field-relative ball velocity vector to reach the hub from the turret pivot.
+    // ── Moving-Shot Vector Math ────────────────────────────────────────────────────────────────
+    // Aim direction uses the actual current turret→hub vector so the ball launches toward the hub.
     Translation2d requiredVel = toTarget.times(baseBallSpeed / toTarget.getNorm());
-
-    // Subtract robot velocity to get the actual shooter vector the flywheel must produce.
-    Translation2d robotVel = new Translation2d(speeds.vxMetersPerSecond, speeds.vyMetersPerSecond);
-    Translation2d shooterVector = requiredVel.minus(robotVel);
+    Translation2d shooterVector = requiredVel.minus(robotVelVec);
 
     // Lead angle: field-relative direction of the shooter vector → convert to robot-relative.
     double leadAngleField = Math.toDegrees(Math.atan2(shooterVector.getY(), shooterVector.getX()));
@@ -345,9 +371,31 @@ public class Superstructure extends SubsystemBase {
     double adjustedRPM =
         (adjustedBallSpeed / ShooterConstants.kFlywheelRadiusMeters) / (2.0 * Math.PI) * 60.0;
 
+    // ── Hood Angle Correction for Moving Shots ─────────────────────────────────────────────────
+    // The hood angle controls the vertical/horizontal split of ball velocity.
+    // The flywheel produces `adjustedBallSpeed` in the robot frame. The ball's field-frame
+    // horizontal speed toward the hub is always `baseBallSpeed` (from the vector math above),
+    // but the vertical component scales with `adjustedBallSpeed`. So the required launch angle θ
+    // satisfies:  sin(θ_adj) = sin(θ_base) × (baseBallSpeed / adjustedBallSpeed)
+    //
+    // Derivation: for a target at the same height, the vertical impulse needed is fixed
+    // (gravity × flight time). Since flight time = distance / baseBallSpeed (constant),
+    // the required vertical velocity = adjustedBallSpeed × sin(θ_adj) = fixed constant.
+    // ∴  sin(θ_adj) = sin(θ_base) × baseBallSpeed / adjustedBallSpeed.
+    if (adjustedBallSpeed > 0.01) {
+      double sinBase = Math.sin(Math.toRadians(hoodAngleDeg));
+      double sinAdjusted =
+          MathUtil.clamp(sinBase * (baseBallSpeed / adjustedBallSpeed), -1.0, 1.0);
+      hoodAngleDeg = Math.toDegrees(Math.asin(sinAdjusted));
+    }
+
     Logger.recordOutput("Superstructure/AimAndShot/DistanceM", distance);
+    Logger.recordOutput("Superstructure/AimAndShot/LookupDistM", lookupDist);
+    Logger.recordOutput("Superstructure/AimAndShot/TofEnabled", ShooterConstants.kEnableTimeOfFlightPrediction);
     Logger.recordOutput("Superstructure/AimAndShot/BaseRPM", baseRPM);
     Logger.recordOutput("Superstructure/AimAndShot/AdjustedRPM", adjustedRPM);
+    Logger.recordOutput("Superstructure/AimAndShot/BaseBallSpeedMps", baseBallSpeed);
+    Logger.recordOutput("Superstructure/AimAndShot/AdjustedBallSpeedMps", adjustedBallSpeed);
     Logger.recordOutput("Superstructure/AimAndShot/HoodAngleDeg", hoodAngleDeg);
     Logger.recordOutput("Superstructure/AimAndShot/LeadAngleDeg", turretLeadAngle);
 
