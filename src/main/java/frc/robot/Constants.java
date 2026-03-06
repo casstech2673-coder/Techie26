@@ -13,9 +13,9 @@ public final class Constants {
         public static final double kMaxAngularSpeed = 2 * Math.PI; // radians per second
 
         // Chassis configuration
-        public static final double kTrackWidth = Units.inchesToMeters(26.5);
+        public static final double kTrackWidth = Units.inchesToMeters(22);
         // Distance between centers of right and left wheels on robot
-        public static final double kWheelBase = Units.inchesToMeters(26.5);
+        public static final double kWheelBase = Units.inchesToMeters(26);
         // Distance between front and back wheels on robot
         public static final SwerveDriveKinematics kDriveKinematics = new SwerveDriveKinematics(
             new Translation2d(kWheelBase / 2, kTrackWidth / 2),
@@ -30,17 +30,17 @@ public final class Constants {
         public static final double kBackRightChassisAngularOffset = Math.PI / 2;
 
         // TODO: Drivetrain CAN IDs
-        public static final int kFrontLeftDrivingCanId = 11;
-        public static final int kRearLeftDrivingCanId = 13;
-        public static final int kFrontRightDrivingCanId = 15;
-        public static final int kRearRightDrivingCanId = 17;
+        public static final int kFrontLeftDrivingCanId = 1;
+        public static final int kRearLeftDrivingCanId = 3;
+        public static final int kFrontRightDrivingCanId = 2;
+        public static final int kRearRightDrivingCanId = 4;
 
-        public static final int kFrontLeftTurningCanId = 10;
-        public static final int kRearLeftTurningCanId = 12;
-        public static final int kFrontRightTurningCanId = 14;
-        public static final int kRearRightTurningCanId = 16;
+        public static final int kFrontLeftTurningCanId = 5;
+        public static final int kRearLeftTurningCanId = 7;
+        public static final int kFrontRightTurningCanId = 6;
+        public static final int kRearRightTurningCanId = 8;
 
-        public static final int kGyroCanId = 17;
+        public static final int kGyroCanId = 9;
         public static final boolean kGyroReversed = false;
 
         // TODO: Heading Lock PID Constants (You will need to tune the P value)
@@ -83,13 +83,13 @@ public final class Constants {
 
     public static final class ShooterConstants {
         public static final int kTurretId = 40;
-        public static final int kHoodId = 41;
-        public static final int kLeftFlywheelId = 42;
-        public static final int kRightFlywheelId = 43;
+        public static final int kHoodId = 32;
+        public static final int kLeftFlywheelId = 30;
+        public static final int kRightFlywheelId = 31;
 
         // --- TURRET RESTRAINTS (IN MOTOR ROTATIONS) ---
         // The exact number of Kraken motor rotations needed to spin the turret one full 360-degree circle.
-        public static final double kTurretMotorRotationsPerTurretRevolution = 100.0; // TODO: DO NOT GUESS. You MUST calculate this via CAD gear ratios or measure it physically using the Spin Test on SmartDashboard.
+        public static final double kTurretMotorRotationsPerTurretRevolution =((50/12)*10); // TODO: DO NOT GUESS. You MUST calculate this via CAD gear ratios or measure it physically using the Spin Test on SmartDashboard.
         
         // TODO: Physical hard-stops
         public static final double kTurretMaxRotations = 41.6; 
@@ -113,8 +113,8 @@ public final class Constants {
 
     public static final class IntakeConstants {
         // TODO: CAN IDs
-        public static final int kPivotMotorId = 20;
-        public static final int kRollerMotorId = 21;
+        public static final int kPivotMotorId = 21;
+        public static final int kRollerMotorId = 22; // TODO NEO vortex
 
         // TODO: Angles (in Degrees) - YOU MUST MEASURE THESE ON THE REAL ROBOT!
         // The REV Through-Bore reads from 0 to 360 degrees.
@@ -132,7 +132,7 @@ public final class Constants {
     }
 
     public static final class HopperConstants {
-        public static final int kVortexId = 30;
+        public static final int kVortexId = 23; // TODO Neo
         
         // Speed to feed the game piece into the shooter flywheels.
         // TODO: You want this fast enough to not lose momentum, but not so fast that it skips on the ball.
