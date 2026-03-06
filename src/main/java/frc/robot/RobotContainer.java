@@ -150,6 +150,18 @@ public class RobotContainer {
         }
     }, m_hopper));
 
+    // Y (hold) : Hopper + flywheels run slowly together; release = stop both
+    m_operatorController.y().whileTrue(
+        Commands.run(() -> {
+            m_shooter.setFlywheelVelocity(-50.0);
+            m_hopper.runSlow();
+        }, m_shooter, m_hopper)
+        .finallyDo(() -> {
+            m_shooter.stopFlywheels();
+            m_hopper.stop();
+        })
+    );
+
     // --- Intake default command ---
     // Hold X = rollers slow; left stick Y = pivot manual (zeroes at center).
     m_intake.setDefaultCommand(Commands.run(() -> {
