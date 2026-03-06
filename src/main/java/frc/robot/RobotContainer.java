@@ -130,14 +130,14 @@ public class RobotContainer {
     m_shooter.setDefaultCommand(Commands.run(() -> {
         // Flywheels: hold A = ~5 RPS (very slow), otherwise stop
         if (m_operatorController.a().getAsBoolean()) {
-            m_shooter.setFlywheelVelocity(5.0);
+            m_shooter.setFlywheelVelocity(-50.0);
         } else {
             m_shooter.stopFlywheels();
         }
 
         // Hood: right stick Y → open-loop slow (10% max), zeroes when centered
         double hoodInput = MathUtil.applyDeadband(-m_operatorController.getRightY(), 0.1);
-        m_shooter.setHoodPercent(hoodInput * 0.10);
+        m_shooter.setHoodPercent(hoodInput * -0.30);
     }, m_shooter));
 
     // --- Hopper default command ---

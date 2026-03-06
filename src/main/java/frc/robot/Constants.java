@@ -129,7 +129,7 @@ public final class Constants {
 
         // Roller Speed
         public static final double kIntakeRollerSpeed = 0.8; // TODO: 80% power
-        public static final double kCreepSpeed = 0.05;       // 5% — slow/test mode
+        public static final double kCreepSpeed = -0.10;       // 5% — slow/test mode
 
         // TODO: Pivot PID Gains (Needs tuning)
         public static final double kPivotP = 0.05;
@@ -143,7 +143,7 @@ public final class Constants {
         // Speed to feed the game piece into the shooter flywheels.
         // TODO: You want this fast enough to not lose momentum, but not so fast that it skips on the ball.
         public static final double kFeedSpeed = 0.8; // 80% power
-        public static final double kCreepSpeed = 0.05;       // 5% — slow/test mode
+        public static final double kCreepSpeed = -0.70;       // 5% — slow/test mode
     }
 
     public static final class VisionConstants {
