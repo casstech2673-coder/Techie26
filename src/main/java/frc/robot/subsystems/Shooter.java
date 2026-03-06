@@ -6,6 +6,15 @@ import com.ctre.phoenix6.controls.VelocityVoltage;
 import com.ctre.phoenix6.hardware.TalonFX;
 import com.ctre.phoenix6.signals.InvertedValue;
 import com.ctre.phoenix6.signals.NeutralModeValue;
+import com.revrobotics.RelativeEncoder;
+import com.revrobotics.spark.SparkBase.ControlType;
+import com.revrobotics.spark.SparkBase.PersistMode;
+import com.revrobotics.spark.SparkBase.ResetMode;
+import com.revrobotics.spark.SparkClosedLoopController;
+import com.revrobotics.spark.SparkFlex;
+import com.revrobotics.spark.SparkLowLevel.MotorType;
+import com.revrobotics.spark.config.SparkBaseConfig.IdleMode;
+import com.revrobotics.spark.config.SparkFlexConfig;
 
 import edu.wpi.first.math.MathUtil;
 import edu.wpi.first.math.interpolation.InterpolatingDoubleTreeMap;
@@ -14,13 +23,17 @@ import frc.robot.Constants.ShooterConstants;
 
 public class Shooter extends SubsystemBase {
 
-    // Hardware
-    private final TalonFX m_turretMotor = new TalonFX(ShooterConstants.kTurretId);
+    // --- Turret: NEO Vortex on SparkFlex ---
+    private final SparkFlex m_turretMotor = new SparkFlex(ShooterConstants.kTurretId, MotorType.kBrushless);
+    private final RelativeEncoder m_turretEncoder = m_turretMotor.getEncoder();
+    private final SparkClosedLoopController m_turretController = m_turretMotor.getClosedLoopController();
+
+    // --- Hood, Flywheels: TalonFX ---
     private final TalonFX m_hoodMotor = new TalonFX(ShooterConstants.kHoodId);
     private final TalonFX m_leftFlywheel = new TalonFX(ShooterConstants.kLeftFlywheelId);
     private final TalonFX m_rightFlywheel = new TalonFX(ShooterConstants.kRightFlywheelId);
 
-    // Control Requests
+    // TalonFX Control Requests (hood + flywheels only)
     private final PositionVoltage m_positionRequest = new PositionVoltage(0);
     private final VelocityVoltage m_velocityRequest = new VelocityVoltage(0);
 
@@ -41,6 +54,20 @@ public class Shooter extends SubsystemBase {
     }
 
     private void configureMotors() {
+        // --- TURRET (SparkFlex / NEO Vortex, Position Control) ---
+        SparkFlexConfig turretConfig = new SparkFlexConfig();
+        turretConfig.idleMode(IdleMode.kBrake);
+        turretConfig.smartCurrentLimit(40);
+        turretConfig.closedLoop
+                .pid(ShooterConstants.kTurretP, ShooterConstants.kTurretI, ShooterConstants.kTurretD)
+                .outputRange(-0.5, 0.5);
+        turretConfig.softLimit
+                .forwardSoftLimit((float) ShooterConstants.kTurretMaxRotations)
+                .reverseSoftLimit((float) ShooterConstants.kTurretMinRotations)
+                .forwardSoftLimitEnabled(true)
+                .reverseSoftLimitEnabled(true);
+        m_turretMotor.configure(turretConfig, ResetMode.kResetSafeParameters, PersistMode.kPersistParameters);
+
         // --- FLYWHEELS (Velocity Control) ---
         TalonFXConfiguration flywheelConfig = new TalonFXConfiguration();
         flywheelConfig.Slot0.kP = ShooterConstants.kFlywheelP;
@@ -49,7 +76,7 @@ public class Shooter extends SubsystemBase {
         flywheelConfig.Slot0.kV = ShooterConstants.kFlywheelV;
         flywheelConfig.CurrentLimits.StatorCurrentLimit = 80;
         flywheelConfig.CurrentLimits.StatorCurrentLimitEnable = true;
-        
+
         flywheelConfig.MotorOutput.Inverted = InvertedValue.CounterClockwise_Positive;
         m_leftFlywheel.getConfigurator().apply(flywheelConfig);
         flywheelConfig.MotorOutput.Inverted = InvertedValue.Clockwise_Positive;
@@ -58,25 +85,19 @@ public class Shooter extends SubsystemBase {
         m_leftFlywheel.setNeutralMode(NeutralModeValue.Coast);
         m_rightFlywheel.setNeutralMode(NeutralModeValue.Coast);
 
-        // --- TURRET & HOOD (Position Control) ---
-        TalonFXConfiguration positionConfig = new TalonFXConfiguration();
-        positionConfig.Slot0.kP = ShooterConstants.kPositionP;
-        positionConfig.Slot0.kI = ShooterConstants.kPositionI;
-        positionConfig.Slot0.kD = ShooterConstants.kPositionD;
-
-        positionConfig.CurrentLimits.StatorCurrentLimit = 40;
-        positionConfig.CurrentLimits.StatorCurrentLimitEnable = true;
-        
-        m_turretMotor.getConfigurator().apply(positionConfig);
-        m_hoodMotor.getConfigurator().apply(positionConfig);
-
-        m_turretMotor.setNeutralMode(NeutralModeValue.Brake);
+        // --- HOOD (TalonFX Position Control) ---
+        TalonFXConfiguration hoodConfig = new TalonFXConfiguration();
+        hoodConfig.Slot0.kP = ShooterConstants.kPositionP;
+        hoodConfig.Slot0.kI = ShooterConstants.kPositionI;
+        hoodConfig.Slot0.kD = ShooterConstants.kPositionD;
+        hoodConfig.CurrentLimits.StatorCurrentLimit = 40;
+        hoodConfig.CurrentLimits.StatorCurrentLimitEnable = true;
+        m_hoodMotor.getConfigurator().apply(hoodConfig);
         m_hoodMotor.setNeutralMode(NeutralModeValue.Brake);
     }
 
     private void populateInterpolationMaps() {
-        // TODO: Scoring truth table (Values must be tuned for distnace to Revolutions per second(RPS)/Hood Motor Rotations)
-        // format: .put(DistanceMeters, MotorValue)
+        // TODO: Scoring truth table (Values must be tuned for distance to RPS / Hood Motor Rotations)
         m_scoreRpsMap.put(1.5, 50.0);  m_scoreHoodMap.put(1.5, 2.5);
         m_scoreRpsMap.put(3.0, 75.0);  m_scoreHoodMap.put(3.0, 4.0);
         m_scoreRpsMap.put(5.0, 100.0); m_scoreHoodMap.put(5.0, 5.5);
@@ -90,12 +111,9 @@ public class Shooter extends SubsystemBase {
     public void periodic() {}
 
     // ==========================================================
-    // COMMANDS (ALL IN ENCODER SPACE)
+    // COMMANDS
     // ==========================================================
 
-    /**
-     * Updates Hood and Flywheels based on distance and game state.
-     */
     public void setShooterStateFromDistance(double distanceMeters, boolean isPassMode) {
         if (isPassMode) {
             setHoodPosition(m_passHoodMap.get(distanceMeters));
@@ -118,53 +136,42 @@ public class Shooter extends SubsystemBase {
     }
 
     /**
-     * Commands the turret to a target rotation, automatically finding the 
-     * shortest path and unwinding if it hits the physical wire limits.
+     * Commands the turret to a target rotation via shortest-path, respecting soft limits.
      */
     public void setTurretPosition(double targetRotations) {
         double currentRotations = getTurretRotations();
         double fullSweep = ShooterConstants.kTurretMotorRotationsPerTurretRevolution;
 
-        // Find shortest path using modulus (-half sweep to +half sweep)
+        // Find shortest path
         double error = MathUtil.inputModulus(targetRotations - currentRotations, -fullSweep / 2.0, fullSweep / 2.0);
         double continuousTarget = currentRotations + error;
 
-        // Wrap-around logic: If the shortest path breaks a wire, spin the long way around
+        // If shortest path breaks a wire, go the long way
         if (continuousTarget > ShooterConstants.kTurretMaxRotations) {
             continuousTarget -= fullSweep;
         } else if (continuousTarget < ShooterConstants.kTurretMinRotations) {
             continuousTarget += fullSweep;
         }
 
-        // If the target is physically inside the deadzone, 
-        // hold at the safe limit until the chassis rotates enough to bring it into view.
         continuousTarget = MathUtil.clamp(
-            continuousTarget, 
-            ShooterConstants.kTurretMinRotations, 
+            continuousTarget,
+            ShooterConstants.kTurretMinRotations,
             ShooterConstants.kTurretMaxRotations
         );
 
         m_targetTurretRotations = continuousTarget;
-        m_turretMotor.setControl(m_positionRequest.withPosition(continuousTarget));
+        m_turretController.setReference(continuousTarget, ControlType.kPosition);
     }
 
     public void stopShooter() {
         m_leftFlywheel.stopMotor();
         m_rightFlywheel.stopMotor();
-        
-        // Send the Turret to face straight forward (0.0) 
-        // and the Hood to its lowest, safest stowed position (e.g., 0.0)
         setTurretPosition(0.0);
         setHoodPosition(0.0);
     }
 
-    public double getTargetRps() { 
-        return m_targetFlywheelRps; 
-    }
-
-    public double getTargetHood() { 
-        return m_targetHoodRotations; 
-    }
+    public double getTargetRps() { return m_targetFlywheelRps; }
+    public double getTargetHood() { return m_targetHoodRotations; }
 
     // ==========================================================
     // "READY TO FIRE" LOGIC
@@ -175,7 +182,7 @@ public class Shooter extends SubsystemBase {
     }
 
     public double getTurretRotations() {
-        return m_turretMotor.getPosition().getValueAsDouble();
+        return m_turretEncoder.getPosition();
     }
 
     public double getHoodRotations() {

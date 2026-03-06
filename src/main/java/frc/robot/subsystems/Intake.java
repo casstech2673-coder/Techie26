@@ -4,8 +4,10 @@ import com.revrobotics.spark.FeedbackSensor;
 import com.revrobotics.spark.SparkAbsoluteEncoder;
 import com.revrobotics.spark.SparkBase.ControlType;
 import com.revrobotics.spark.SparkClosedLoopController;
+import com.revrobotics.spark.SparkFlex;
 import com.revrobotics.spark.SparkLowLevel.MotorType;
 import com.revrobotics.spark.SparkMax;
+import com.revrobotics.spark.config.SparkFlexConfig;
 import com.revrobotics.spark.config.SparkMaxConfig;
 
 import edu.wpi.first.wpilibj2.command.SubsystemBase;
@@ -15,14 +17,14 @@ public class Intake extends SubsystemBase {
     
     // Hardware
     private final SparkMax m_pivotMotor;
-    private final SparkMax m_rollerMotor;
+    private final SparkFlex m_rollerMotor; // NEO Vortex
     private final SparkAbsoluteEncoder m_pivotEncoder;
     private final SparkClosedLoopController m_pivotController;
 
     public Intake() {
         // Initialize Motors
         m_pivotMotor = new SparkMax(IntakeConstants.kPivotMotorId, MotorType.kBrushless);
-        m_rollerMotor = new SparkMax(IntakeConstants.kRollerMotorId, MotorType.kBrushless);
+        m_rollerMotor = new SparkFlex(IntakeConstants.kRollerMotorId, MotorType.kBrushless);
 
         // Get the absolute encoder and closed-loop controller from the pivot motor
         m_pivotEncoder = m_pivotMotor.getAbsoluteEncoder();
@@ -51,7 +53,7 @@ public class Intake extends SubsystemBase {
         // ==========================================================
         // ROLLER MOTOR CONFIGURATION
         // ==========================================================
-        SparkMaxConfig rollerConfig = new SparkMaxConfig();
+        SparkFlexConfig rollerConfig = new SparkFlexConfig();
         
         rollerConfig.inverted(false); 
         rollerConfig.smartCurrentLimit(30); // Helps conserve battery life by not supplying full 40A

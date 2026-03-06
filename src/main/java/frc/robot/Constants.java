@@ -69,7 +69,7 @@ public final class Constants {
         // 13T, or 14T. This changes the drive speed of the module (a pinion gear with
         // more teeth will result in a robot that drives faster).
         public static final int kDrivingMotorPinionTeeth = 14;
-        public static final double kFreeSpeedRpm = 5676;
+        public static final double kFreeSpeedRpm = 6784; // NEO Vortex free speed (RPM)
 
         // Calculations required for driving motor conversion factors and feed forward
         public static final double kDrivingMotorFreeSpeedRps = kFreeSpeedRpm / 60;
@@ -88,8 +88,8 @@ public final class Constants {
         public static final int kRightFlywheelId = 31;
 
         // --- TURRET RESTRAINTS (IN MOTOR ROTATIONS) ---
-        // The exact number of Kraken motor rotations needed to spin the turret one full 360-degree circle.
-        public static final double kTurretMotorRotationsPerTurretRevolution =((50/12)*10); // TODO: DO NOT GUESS. You MUST calculate this via CAD gear ratios or measure it physically using the Spin Test on SmartDashboard.
+        // The exact number of NEO Vortex motor rotations needed to spin the turret one full 360-degree circle.
+        public static final double kTurretMotorRotationsPerTurretRevolution = (50.0/12)*10; // TODO: DO NOT GUESS. You MUST calculate this via CAD gear ratios or measure it physically using the Spin Test on SmartDashboard.
         
         // TODO: Physical hard-stops
         public static final double kTurretMaxRotations = 41.6; 
@@ -101,9 +101,15 @@ public final class Constants {
         public static final double kFlywheelD = 0.0;
         public static final double kFlywheelV = 0.12; // Feedforward (Crucial for Velocity)
 
+        // Hood PID (TalonFX, units = motor rotations)
         public static final double kPositionP = 2.0;
         public static final double kPositionI = 0.0;
         public static final double kPositionD = 0.0;
+
+        // Turret PID (SparkFlex/NEO Vortex, units = motor rotations)
+        public static final double kTurretP = 0.1; // TODO: Tune on real robot
+        public static final double kTurretI = 0.0;
+        public static final double kTurretD = 0.0;
 
         // --- TOLERANCES (ENCODER SPACE) ---
         public static final double kTurretToleranceRotations = 0.5;

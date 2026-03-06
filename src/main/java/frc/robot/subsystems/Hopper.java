@@ -1,9 +1,9 @@
 package frc.robot.subsystems;
 
-import com.revrobotics.spark.SparkFlex;
+import com.revrobotics.spark.SparkMax;
 import com.revrobotics.spark.SparkLowLevel.MotorType;
 import com.revrobotics.spark.config.SparkBaseConfig.IdleMode;
-import com.revrobotics.spark.config.SparkFlexConfig;
+import com.revrobotics.spark.config.SparkMaxConfig;
 
 import edu.wpi.first.wpilibj.Timer;
 import edu.wpi.first.wpilibj2.command.SubsystemBase;
@@ -11,7 +11,7 @@ import frc.robot.Constants.HopperConstants;
 
 public class Hopper extends SubsystemBase {
     
-    private final SparkFlex m_vortex;
+    private final SparkMax m_vortex; // NEO on SparkMax
     
     // --- Timing variables for the "Run-Up" sequence ---
     private final Timer m_feedTimer = new Timer();
@@ -19,9 +19,9 @@ public class Hopper extends SubsystemBase {
     private static final double BACKSPIN_TIME_SECONDS = 0.5; //TODO: tune this on the real robot
 
     public Hopper() {
-        m_vortex = new SparkFlex(HopperConstants.kVortexId, MotorType.kBrushless);
+        m_vortex = new SparkMax(HopperConstants.kVortexId, MotorType.kBrushless);
 
-        SparkFlexConfig hopperConfig = new SparkFlexConfig();
+        SparkMaxConfig hopperConfig = new SparkMaxConfig();
         hopperConfig.inverted(false); 
         hopperConfig.smartCurrentLimit(50); 
         hopperConfig.idleMode(IdleMode.kBrake);
