@@ -57,5 +57,20 @@
     "edu.wpi.first.math.**.proto.*",
     "edu.wpi.first.math.**.struct.*",
   ],
-  "java.dependency.enableDependencyCheckup": false
+  "java.dependency.enableDependencyCheckup": false,
+  "cSpell.words": [
+    "Arducam",
+    "Brushless",
+    "Deadband",
+    "deadbands",
+    "deadzone",
+    "Feedforward",
+    "INTAKING",
+    "PATHPLANNER",
+    "PHOTONVISION",
+    "PIDS",
+    "revrobotics",
+    "Teleop",
+    "Toggleable"
+  ]
 }
