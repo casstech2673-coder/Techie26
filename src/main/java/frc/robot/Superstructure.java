@@ -9,10 +9,12 @@ import edu.wpi.first.wpilibj2.command.SubsystemBase;
 import frc.robot.Constants.IntakeConstants;
 import frc.robot.Constants.ShooterConstants;
 import frc.robot.Constants.SuperstructureConstants;
+import frc.robot.Constants.VisionConstants;
 import frc.robot.subsystems.Hopper;
 import frc.robot.subsystems.Intake;
 import frc.robot.subsystems.Shooter;
 import frc.robot.subsystems.SwerveDrive;
+import frc.robot.subsystems.Vision;
 
 public class Superstructure extends SubsystemBase {
 
@@ -22,6 +24,7 @@ public class Superstructure extends SubsystemBase {
         COLLECTING,  // Intake deployed, rollers spinning, hopper stopped
         VACUUM,      // Intake + Hopper + Shooter (Auto-Targeting)
         FIRING,      // Hopper slams forward into the shooter
+        CREEP,       // Flywheels + intake roller + hopper at ~5% for testing
     }
 
     public enum TargetMode { 
@@ -32,6 +35,7 @@ public class Superstructure extends SubsystemBase {
 
     // Subsystems
     private final SwerveDrive m_swerve;
+    private final Vision m_vision;
     private final Intake m_intake;
     private final Hopper m_hopper;
     private final Shooter m_shooter;
@@ -41,8 +45,9 @@ public class Superstructure extends SubsystemBase {
     private SystemState m_currentState = SystemState.STOWED;
     private TargetMode m_targetMode = TargetMode.AUTO;
     
-    public Superstructure(SwerveDrive swerve, Intake intake, Hopper hopper, Shooter shooter, GameManager gameManager) {
+    public Superstructure(SwerveDrive swerve, Vision vision, Intake intake, Hopper hopper, Shooter shooter, GameManager gameManager) {
         this.m_swerve = swerve;
+        this.m_vision = vision;
         this.m_intake = intake;
         this.m_hopper = hopper;
         this.m_shooter = shooter;
@@ -86,6 +91,13 @@ public class Superstructure extends SubsystemBase {
                 m_hopper.startFeedSequence(); // Slam it forward into flywheels
                 handleShooterAiming();
                 break;
+
+            case CREEP:
+                m_intake.setPivotAngle(IntakeConstants.kDeployedAngle);
+                m_intake.runRollersSlow();
+                m_hopper.runSlow();
+                m_shooter.setFlywheelVelocity(5.0); // ~5 RPS, just enough to verify spin
+                break;
         }
     }
 
@@ -115,23 +127,39 @@ public class Superstructure extends SubsystemBase {
 
     private void handleShooterAiming() {
         boolean aimAtHub = isTargetingHub();
+
+        // --- PRIORITY 1: limelight-4 (turret-mounted) has a live target ---
+        // tx  → turret correction (already turret-relative since the camera rotates with it)
+        // ty  → distance via trigonometry: d = (targetH - camH) / tan(mountAngle + ty)
+        if (m_vision.turretHasTarget()) {
+            double txDeg = m_vision.getTurretTxDeg();
+            double tyDeg = m_vision.getTurretTyDeg();
+
+            // Distance from limelight geometry
+            double angleRad = Math.toRadians(VisionConstants.kTurretCameraMountAngleDeg + tyDeg);
+            double dist = (VisionConstants.kTargetHeightMeters - VisionConstants.kTurretCameraHeightMeters)
+                          / Math.tan(angleRad);
+
+            m_shooter.setShooterStateFromDistance(dist, !aimAtHub);
+
+            // Turret correction: add tx error (converted to motor rotations) to current position
+            double txMotorRotations = (txDeg / 360.0) * ShooterConstants.kTurretMotorRotationsPerTurretRevolution;
+            m_shooter.setTurretPosition(m_shooter.getTurretRotations() + txMotorRotations);
+            return;
+        }
+
+        // --- PRIORITY 2: Odometry-based fallback (no vision target) ---
         Translation2d target = getTargetTranslation(aimAtHub);
         Pose2d pose = m_swerve.getPose();
-        
-        // Calculate Distance (For Hood & Flywheels)
+
         double dist = pose.getTranslation().getDistance(target);
         m_shooter.setShooterStateFromDistance(dist, !aimAtHub);
-        
-        // Calculate Angle (For the Turret)
+
         double deltaX = target.getX() - pose.getX();
         double deltaY = target.getY() - pose.getY();
-        
         Rotation2d fieldRelativeAngle = new Rotation2d(Math.atan2(deltaY, deltaX));
         Rotation2d robotRelativeAngle = fieldRelativeAngle.minus(pose.getRotation());
-        
-        // Convert to Motor Rotations
         double targetMotorRotations = robotRelativeAngle.getRotations() * ShooterConstants.kTurretMotorRotationsPerTurretRevolution;
-        
         m_shooter.setTurretPosition(targetMotorRotations);
     }
 

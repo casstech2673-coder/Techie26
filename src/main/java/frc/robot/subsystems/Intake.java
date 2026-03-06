@@ -96,4 +96,11 @@ public class Intake extends SubsystemBase {
     public void reverseRollers() {
         m_rollerMotor.set(-IntakeConstants.kIntakeRollerSpeed);
     }
+
+    /**
+     * Runs the roller very slowly for testing/verification.
+     */
+    public void runRollersSlow() {
+        m_rollerMotor.set(IntakeConstants.kCreepSpeed);
+    }
 }

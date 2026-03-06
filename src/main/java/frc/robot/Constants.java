@@ -123,6 +123,7 @@ public final class Constants {
 
         // Roller Speed
         public static final double kIntakeRollerSpeed = 0.8; // TODO: 80% power
+        public static final double kCreepSpeed = 0.05;       // 5% — slow/test mode
 
         // TODO: Pivot PID Gains (Needs tuning)
         public static final double kPivotP = 0.05;
@@ -133,23 +134,34 @@ public final class Constants {
     public static final class HopperConstants {
         public static final int kVortexId = 30;
         
-        // Speed to feed the game piece into the shooter flywheels. 
+        // Speed to feed the game piece into the shooter flywheels.
         // TODO: You want this fast enough to not lose momentum, but not so fast that it skips on the ball.
         public static final double kFeedSpeed = 0.8; // 80% power
+        public static final double kCreepSpeed = 0.05;       // 5% — slow/test mode
     }
 
     public static final class VisionConstants {
-        
+
         // --- PHOTONVISION ---
-        // TODO: This MUST exactly match the camera name you configured in the PhotonVision Web UI 
+        // TODO: This MUST exactly match the camera name you configured in the PhotonVision Web UI
         // running on the Luma.
-        public static final String kArducamName = "Arducam_OV9281"; 
+        public static final String kArducamName = "Arducam_OV9281";
 
         // --- VISION REJECTION THRESHOLDS ---
-        // If the robot is spinning faster than this (in degrees per second), we ignore AprilTag 
+        // If the robot is spinning faster than this (in degrees per second), we ignore AprilTag
         // pose updates because motion blur and rolling shutter will give us highly inaccurate data.
         // 360 degrees/sec means one full rotation per second. Tune this down if your odometry jumps while spinning.
-        public static final double kMaxAngularVelocityForVision = 360.0; 
+        public static final double kMaxAngularVelocityForVision = 360.0;
+
+        // --- LIMELIGHT-4 TURRET CAMERA GEOMETRY ---
+        // TODO: Measure these from your robot CAD / physical robot
+        // Height of the limelight-4 lens above the floor (meters)
+        public static final double kTurretCameraHeightMeters = 0.60;
+        // Fixed upward tilt of the camera from horizontal (degrees, positive = angled up)
+        public static final double kTurretCameraMountAngleDeg = 20.0;
+        // Height of the target center above the floor (meters) — e.g. hub opening
+        // TODO: Confirm from game manual
+        public static final double kTargetHeightMeters = 2.60;
     }
 
     public static final class SuperstructureConstants {

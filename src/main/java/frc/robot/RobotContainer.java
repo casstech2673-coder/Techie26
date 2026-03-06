@@ -45,7 +45,7 @@ public class RobotContainer {
   // SUPER STRUCTURE STATE MACHINE
   // ==========================================================
   private final Superstructure m_superstructure = new Superstructure(
-      m_swerve, m_intake, m_hopper, m_shooter, m_gameManager);
+      m_swerve, m_vision, m_intake, m_hopper, m_shooter, m_gameManager);
 
   // ==========================================================
   // Telemetry
@@ -117,8 +117,8 @@ public class RobotContainer {
     // Zero the Gyro (Start Button)
     m_driverController.start().onTrue(Commands.runOnce(() -> m_swerve.zeroHeading()));
 
-    // Set X-Stance (Hold Left Bumper)
-    m_driverController.leftBumper().whileTrue(Commands.runOnce(() -> m_swerve.setX()));
+    // Set X-Stance (Hold Left Bumper) — must use run() so it repeats every tick while held
+    m_driverController.leftBumper().whileTrue(Commands.run(() -> m_swerve.setX()));
 
 
     // ==========================================================
@@ -155,20 +155,20 @@ public class RobotContainer {
         .onTrue(Commands.runOnce(() -> m_superstructure.setState(SystemState.IDLE)));
 
     // A BUTTON: HYBRID Target TOGGLE
+    // Quick tap: cycle between Hub and Wall
     m_operatorController.a()
-        // Tap to cycle between Hub and Wall
-        .onTrue(Commands.runOnce(() -> m_superstructure.cycleManualTargets()))
-        
-        // IF HELD FOR 1 SECOND: Reset back to AUTO
-        .onTrue(
-            Commands.waitSeconds(1.0)
-                .andThen(Commands.runOnce(() -> {
-                    if (m_operatorController.getHID().getAButton()) {
-                        m_superstructure.setTargetMode(TargetMode.AUTO);
-                    }
-                }
-            )
-        ));
+        .onTrue(Commands.runOnce(() -> m_superstructure.cycleManualTargets()));
+
+    // Hold for 1 second: reset back to AUTO
+    // debounce() returns a Trigger that only becomes true after the button has been held for 1s
+    m_operatorController.a().debounce(1.0)
+        .onTrue(Commands.runOnce(() -> m_superstructure.setTargetMode(TargetMode.AUTO)));
+
+    // CREEP (Hold Right Bumper)
+    // Runs flywheels, intake roller, and hopper at ~5% to verify all mechanisms spin.
+    m_operatorController.rightBumper()
+        .onTrue(Commands.runOnce(() -> m_superstructure.setState(SystemState.CREEP)))
+        .onFalse(Commands.runOnce(() -> m_superstructure.setState(SystemState.IDLE)));
 
     // LIVE TUNING MODE (Hold Back Button)
     // Engages the D-Pad tuning command we built earlier so you can calibrate the interpolation maps.
