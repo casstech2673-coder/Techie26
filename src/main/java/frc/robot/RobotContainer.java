@@ -130,7 +130,7 @@ public class RobotContainer {
     m_shooter.setDefaultCommand(Commands.run(() -> {
         // Flywheels: hold A = ~5 RPS (very slow), otherwise stop
         if (m_operatorController.a().getAsBoolean()) {
-            m_shooter.setFlywheelVelocity(-50.0);
+            m_shooter.setFlywheelVelocity(-10.0);
         } else {
             m_shooter.stopFlywheels();
         }
@@ -153,7 +153,7 @@ public class RobotContainer {
     // Y (hold) : Hopper + flywheels run slowly together; release = stop both
     m_operatorController.y().whileTrue(
         Commands.run(() -> {
-            m_shooter.setFlywheelVelocity(-50.0);
+            m_shooter.setFlywheelVelocity(-10.0);
             m_hopper.runSlow();
         }, m_shooter, m_hopper)
         .finallyDo(() -> {

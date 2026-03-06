@@ -143,7 +143,7 @@ public final class Constants {
         // Speed to feed the game piece into the shooter flywheels.
         // TODO: You want this fast enough to not lose momentum, but not so fast that it skips on the ball.
         public static final double kFeedSpeed = 0.8; // 80% power
-        public static final double kCreepSpeed = -0.70;       // 5% — slow/test mode
+        public static final double kCreepSpeed = -0.80;       // 5% — slow/test mode
     }
 
     public static final class VisionConstants {
