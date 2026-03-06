@@ -62,33 +62,31 @@ public class SwerveDrive extends SubsystemBase {
     HAL.report(tResourceType.kResourceType_RobotDrive, tInstances.kRobotDriveSwerve_MaxSwerve);
     m_headingController.enableContinuousInput(-Math.PI, Math.PI);
 
-    // Load the RobotConfig from the GUI settings.
-    RobotConfig config;
+    // Load the RobotConfig from the PathPlanner GUI settings and configure AutoBuilder.
+    // If the config file is missing (not yet generated via PathPlanner GUI), AutoBuilder
+    // will not be configured and auto routines will be unavailable for this session.
     try {
-      config = RobotConfig.fromGUISettings();
+      RobotConfig config = RobotConfig.fromGUISettings();
+      AutoBuilder.configure(
+          this::getPose,
+          this::resetOdometry,
+          this::getRobotRelativeSpeeds,
+          (speeds, feedforwards) -> driveRobotRelative(speeds),
+          new PPHolonomicDriveController(
+              new PIDConstants(DriveConstants.kAutoDriveP, DriveConstants.kAutoDriveI, DriveConstants.kAutoDriveD),
+              new PIDConstants(DriveConstants.kAutoTurnP, DriveConstants.kAutoTurnI, DriveConstants.kAutoTurnD)
+          ),
+          config,
+          () -> {
+              var alliance = DriverStation.getAlliance();
+              return alliance.isPresent() ? alliance.get() == DriverStation.Alliance.Red : false;
+          },
+          this
+      );
     } catch (Exception e) {
-      e.printStackTrace();
-      return; 
+      DriverStation.reportError("PathPlanner AutoBuilder config failed: " + e.getMessage()
+          + " — Open PathPlanner GUI, configure the robot, and redeploy.", true);
     }
-
-    // Configure PathPlanner AutoBuilder
-    AutoBuilder.configure(
-        this::getPose, 
-        this::resetOdometry, 
-        this::getRobotRelativeSpeeds, 
-        (speeds, feedforwards) -> driveRobotRelative(speeds), 
-        new PPHolonomicDriveController(
-            // NOTE: You must add kAutoDriveP, I, D and kAutoTurnP, I, D to your Constants!
-            new PIDConstants(DriveConstants.kAutoDriveP, DriveConstants.kAutoDriveI, DriveConstants.kAutoDriveD), 
-            new PIDConstants(DriveConstants.kAutoTurnP, DriveConstants.kAutoTurnI, DriveConstants.kAutoTurnD)  
-        ),
-        config, 
-        () -> {
-            var alliance = DriverStation.getAlliance();
-            return alliance.isPresent() ? alliance.get() == DriverStation.Alliance.Red : false;
-        },
-        this
-    );
   }
 
   @Override

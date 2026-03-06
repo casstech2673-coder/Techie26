@@ -3,6 +3,7 @@ package frc.robot;
 import com.pathplanner.lib.auto.AutoBuilder;
 import com.pathplanner.lib.auto.NamedCommands;
 
+import edu.wpi.first.wpilibj.DriverStation;
 import edu.wpi.first.wpilibj.smartdashboard.SendableChooser;
 import edu.wpi.first.wpilibj.smartdashboard.SmartDashboard;
 import edu.wpi.first.wpilibj2.command.Command;
@@ -98,8 +99,14 @@ public class RobotContainer {
         Commands.runOnce(() -> m_superstructure.setState(SystemState.VACUUM))
     );
 
-    // PathPlanner Auto Chooser
-    autoChooser = AutoBuilder.buildAutoChooser();
+    // PathPlanner Auto Chooser — only available if AutoBuilder was successfully configured
+    if (AutoBuilder.isConfigured()) {
+      autoChooser = AutoBuilder.buildAutoChooser();
+    } else {
+      autoChooser = new SendableChooser<>();
+      DriverStation.reportWarning("AutoBuilder not configured — auto routines unavailable. "
+          + "Open PathPlanner GUI, configure the robot, and redeploy.", false);
+    }
     SmartDashboard.putData("Select Auto", autoChooser);
 
     configureBindings();
