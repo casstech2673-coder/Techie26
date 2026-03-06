@@ -44,6 +44,7 @@ public class Superstructure extends SubsystemBase {
     // State Tracking
     private SystemState m_currentState = SystemState.STOWED;
     private TargetMode m_targetMode = TargetMode.AUTO;
+    private double m_manualPivotInput = 0.0;
     
     public Superstructure(SwerveDrive swerve, Vision vision, Intake intake, Hopper hopper, Shooter shooter, GameManager gameManager) {
         this.m_swerve = swerve;
@@ -93,7 +94,8 @@ public class Superstructure extends SubsystemBase {
                 break;
 
             case CREEP:
-                m_intake.setPivotAngle(IntakeConstants.kDeployedAngle);
+                // Pivot is controlled manually via left joystick — does NOT auto-position
+                m_intake.runPivotManual(m_manualPivotInput);
                 m_intake.runRollersSlow();
                 m_hopper.runSlow();
                 m_shooter.setFlywheelVelocity(5.0); // ~5 RPS, just enough to verify spin
@@ -107,6 +109,10 @@ public class Superstructure extends SubsystemBase {
 
     public void setState(SystemState newState) {
         m_currentState = newState;
+    }
+
+    public void setManualPivotInput(double joystickY) {
+        m_manualPivotInput = joystickY;
     }
 
     public void setTargetMode(TargetMode mode) {

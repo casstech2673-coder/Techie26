@@ -100,6 +100,15 @@ public class Intake extends SubsystemBase {
     }
 
     /**
+     * Drives the pivot open-loop at a very low speed using a joystick input (-1 to 1).
+     * Positive input = pivot moves up, negative = pivot moves down.
+     * Max output is capped at 15% so nothing moves dangerously fast in test mode.
+     */
+    public void runPivotManual(double joystickInput) {
+        m_pivotMotor.set(joystickInput * 0.15);
+    }
+
+    /**
      * Runs the roller very slowly for testing/verification.
      */
     public void runRollersSlow() {

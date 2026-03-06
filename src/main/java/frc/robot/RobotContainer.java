@@ -172,10 +172,17 @@ public class RobotContainer {
         .onTrue(Commands.runOnce(() -> m_superstructure.setTargetMode(TargetMode.AUTO)));
 
     // CREEP (Hold Right Bumper)
-    // Runs flywheels, intake roller, and hopper at ~5% to verify all mechanisms spin.
+    // Flywheels, roller, hopper at ~5%. Operator Left Stick Y moves pivot very slowly.
     m_operatorController.rightBumper()
-        .onTrue(Commands.runOnce(() -> m_superstructure.setState(SystemState.CREEP)))
-        .onFalse(Commands.runOnce(() -> m_superstructure.setState(SystemState.IDLE)));
+        .whileTrue(Commands.run(() -> {
+            m_superstructure.setState(SystemState.CREEP);
+            // Left stick Y: push up = positive, negate because joysticks report up as negative
+            m_superstructure.setManualPivotInput(-m_operatorController.getLeftY());
+        }))
+        .onFalse(Commands.runOnce(() -> {
+            m_superstructure.setManualPivotInput(0.0); // stop pivot on release
+            m_superstructure.setState(SystemState.IDLE);
+        }));
 
     // LIVE TUNING MODE (Hold Back Button)
     // Engages the D-Pad tuning command we built earlier so you can calibrate the interpolation maps.
