@@ -1,6 +1,7 @@
 package frc.robot.subsystems;
 
 import com.ctre.phoenix6.configs.TalonFXConfiguration;
+import com.ctre.phoenix6.controls.DutyCycleOut;
 import com.ctre.phoenix6.controls.PositionVoltage;
 import com.ctre.phoenix6.controls.VelocityVoltage;
 import com.ctre.phoenix6.hardware.TalonFX;
@@ -36,6 +37,7 @@ public class Shooter extends SubsystemBase {
     // TalonFX Control Requests (hood + flywheels only)
     private final PositionVoltage m_positionRequest = new PositionVoltage(0);
     private final VelocityVoltage m_velocityRequest = new VelocityVoltage(0);
+    private final DutyCycleOut m_dutyCycleRequest = new DutyCycleOut(0);
 
     // Interpolation Maps (Distance in Meters -> Encoder Space Values)
     private final InterpolatingDoubleTreeMap m_scoreRpsMap = new InterpolatingDoubleTreeMap();
@@ -161,6 +163,17 @@ public class Shooter extends SubsystemBase {
 
         m_targetTurretRotations = continuousTarget;
         m_turretController.setReference(continuousTarget, ControlType.kPosition);
+    }
+
+    /** Stops only the flywheels (for test mode). */
+    public void stopFlywheels() {
+        m_leftFlywheel.stopMotor();
+        m_rightFlywheel.stopMotor();
+    }
+
+    /** Open-loop hood control for test mode (-1 to 1). */
+    public void setHoodPercent(double percent) {
+        m_hoodMotor.setControl(m_dutyCycleRequest.withOutput(percent));
     }
 
     public void stopShooter() {
