@@ -53,7 +53,7 @@ public class Shooter extends SubsystemBase {
     private double m_targetFlywheelRps = 0.0;
 
     // Live-tuning: last values applied from SmartDashboard
-    private double m_hoodMaxPercent = 0.30;
+    private double m_hoodMaxPercent = 0.20;
     private double m_lastHoodP = ShooterConstants.kPositionP;
     private double m_lastHoodI = ShooterConstants.kPositionI;
     private double m_lastHoodD = ShooterConstants.kPositionD;

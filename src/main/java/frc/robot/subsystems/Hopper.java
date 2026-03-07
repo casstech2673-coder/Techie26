@@ -24,7 +24,7 @@ public class Hopper extends SubsystemBase {
         SparkMaxConfig hopperConfig = new SparkMaxConfig();
         hopperConfig.inverted(false); 
         hopperConfig.smartCurrentLimit(50); 
-        hopperConfig.idleMode(IdleMode.kBrake);
+        hopperConfig.idleMode(IdleMode.kCoast);
 
         m_vortex.configure(hopperConfig, com.revrobotics.ResetMode.kResetSafeParameters, com.revrobotics.PersistMode.kPersistParameters);
     }
