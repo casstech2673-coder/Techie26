@@ -137,7 +137,7 @@ public class RobotContainer {
 
         // Hood: right stick Y → open-loop slow (10% max), zeroes when centered
         double hoodInput = MathUtil.applyDeadband(-m_operatorController.getRightY(), 0.1);
-        m_shooter.setHoodPercent(hoodInput * -0.30);
+        m_shooter.setHoodPercent(hoodInput * -1.0);
     }, m_shooter));
 
     // --- Hopper default command ---
@@ -149,6 +149,16 @@ public class RobotContainer {
             m_hopper.stop();
         }
     }, m_hopper));
+
+    // RB : Zero hood encoder at current position
+    m_operatorController.rightBumper().onTrue(
+        Commands.runOnce(() -> m_shooter.zeroHoodEncoder())
+    );
+
+    // LB : Zero arm (intake pivot) encoder at current position
+    m_operatorController.leftBumper().onTrue(
+        Commands.runOnce(() -> m_intake.zeroPivotEncoder())
+    );
 
     // Y (hold) : Hopper + flywheels run slowly together; release = stop both
     m_operatorController.y().whileTrue(

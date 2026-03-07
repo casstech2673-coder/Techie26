@@ -1,5 +1,6 @@
 package frc.robot.subsystems;
 
+import com.ctre.phoenix6.configs.Slot0Configs;
 import com.ctre.phoenix6.configs.TalonFXConfiguration;
 import com.ctre.phoenix6.controls.DutyCycleOut;
 import com.ctre.phoenix6.controls.PositionVoltage;
@@ -19,6 +20,7 @@ import com.revrobotics.spark.config.SparkFlexConfig;
 
 import edu.wpi.first.math.MathUtil;
 import edu.wpi.first.math.interpolation.InterpolatingDoubleTreeMap;
+import edu.wpi.first.wpilibj.smartdashboard.SmartDashboard;
 import edu.wpi.first.wpilibj2.command.SubsystemBase;
 import frc.robot.Constants.ShooterConstants;
 
@@ -50,9 +52,30 @@ public class Shooter extends SubsystemBase {
     private double m_targetHoodRotations = 0.0;
     private double m_targetFlywheelRps = 0.0;
 
+    // Live-tuning: last values applied from SmartDashboard
+    private double m_hoodMaxPercent = 0.30;
+    private double m_lastHoodP = ShooterConstants.kPositionP;
+    private double m_lastHoodI = ShooterConstants.kPositionI;
+    private double m_lastHoodD = ShooterConstants.kPositionD;
+
+    private double m_lastTurretP = ShooterConstants.kTurretP;
+    private double m_lastTurretI = ShooterConstants.kTurretI;
+    private double m_lastTurretD = ShooterConstants.kTurretD;
+    private double m_lastTurretMaxOutput = 0.5;
+
     public Shooter() {
         configureMotors();
         populateInterpolationMaps();
+
+        SmartDashboard.putNumber("Hood/kP", ShooterConstants.kPositionP);
+        SmartDashboard.putNumber("Hood/kI", ShooterConstants.kPositionI);
+        SmartDashboard.putNumber("Hood/kD", ShooterConstants.kPositionD);
+        SmartDashboard.putNumber("Hood/MaxPercent", 0.30);
+
+        SmartDashboard.putNumber("Turret/kP", ShooterConstants.kTurretP);
+        SmartDashboard.putNumber("Turret/kI", ShooterConstants.kTurretI);
+        SmartDashboard.putNumber("Turret/kD", ShooterConstants.kTurretD);
+        SmartDashboard.putNumber("Turret/MaxOutput", 0.5);
     }
 
     private void configureMotors() {
@@ -110,7 +133,35 @@ public class Shooter extends SubsystemBase {
     }
 
     @Override
-    public void periodic() {}
+    public void periodic() {
+        SmartDashboard.putNumber("Hood/Rotations", getHoodRotations());
+        SmartDashboard.putNumber("Shooter/FlywheelRPS", getFlywheelRps());
+
+        // --- Hood PID live tuning ---
+        m_hoodMaxPercent = SmartDashboard.getNumber("Hood/MaxPercent", m_hoodMaxPercent);
+        double hoodP = SmartDashboard.getNumber("Hood/kP", m_lastHoodP);
+        double hoodI = SmartDashboard.getNumber("Hood/kI", m_lastHoodI);
+        double hoodD = SmartDashboard.getNumber("Hood/kD", m_lastHoodD);
+        if (hoodP != m_lastHoodP || hoodI != m_lastHoodI || hoodD != m_lastHoodD) {
+            Slot0Configs slot0 = new Slot0Configs();
+            slot0.kP = hoodP; slot0.kI = hoodI; slot0.kD = hoodD;
+            m_hoodMotor.getConfigurator().apply(slot0);
+            m_lastHoodP = hoodP; m_lastHoodI = hoodI; m_lastHoodD = hoodD;
+        }
+
+        // --- Turret PID live tuning ---
+        double turretP = SmartDashboard.getNumber("Turret/kP", m_lastTurretP);
+        double turretI = SmartDashboard.getNumber("Turret/kI", m_lastTurretI);
+        double turretD = SmartDashboard.getNumber("Turret/kD", m_lastTurretD);
+        double turretMax = SmartDashboard.getNumber("Turret/MaxOutput", m_lastTurretMaxOutput);
+        if (turretP != m_lastTurretP || turretI != m_lastTurretI || turretD != m_lastTurretD || turretMax != m_lastTurretMaxOutput) {
+            SparkFlexConfig config = new SparkFlexConfig();
+            config.closedLoop.pid(turretP, turretI, turretD).outputRange(-turretMax, turretMax);
+            m_turretMotor.configure(config, com.revrobotics.ResetMode.kNoResetSafeParameters, com.revrobotics.PersistMode.kNoPersistParameters);
+            m_lastTurretP = turretP; m_lastTurretI = turretI; m_lastTurretD = turretD;
+            m_lastTurretMaxOutput = turretMax;
+        }
+    }
 
     // ==========================================================
     // COMMANDS
@@ -165,15 +216,20 @@ public class Shooter extends SubsystemBase {
         m_turretController.setReference(continuousTarget, ControlType.kPosition);
     }
 
+    /** Zeros the hood encoder at the current position. */
+    public void zeroHoodEncoder() {
+        m_hoodMotor.setPosition(0.0);
+    }
+
     /** Stops only the flywheels (for test mode). */
     public void stopFlywheels() {
         m_leftFlywheel.stopMotor();
         m_rightFlywheel.stopMotor();
     }
 
-    /** Open-loop hood control for test mode (-1 to 1). */
+    /** Open-loop hood control; output is clamped to the SmartDashboard MaxPercent limit. */
     public void setHoodPercent(double percent) {
-        m_hoodMotor.setControl(m_dutyCycleRequest.withOutput(percent));
+        m_hoodMotor.setControl(m_dutyCycleRequest.withOutput(MathUtil.clamp(percent, -m_hoodMaxPercent, m_hoodMaxPercent)));
     }
 
     public void stopShooter() {

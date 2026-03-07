@@ -10,6 +10,7 @@ import com.revrobotics.spark.SparkMax;
 import com.revrobotics.spark.config.SparkFlexConfig;
 import com.revrobotics.spark.config.SparkMaxConfig;
 
+import edu.wpi.first.wpilibj.smartdashboard.SmartDashboard;
 import edu.wpi.first.wpilibj2.command.SubsystemBase;
 import frc.robot.Constants.IntakeConstants;
 
@@ -20,6 +21,13 @@ public class Intake extends SubsystemBase {
     private final SparkFlex m_rollerMotor; // NEO Vortex
     private final SparkAbsoluteEncoder m_pivotEncoder;
     private final SparkClosedLoopController m_pivotController;
+
+    // Live-tuning: last values applied from SmartDashboard
+    private double m_manualSpeedLimit = 0.15;
+    private double m_lastPivotP = IntakeConstants.kPivotP;
+    private double m_lastPivotI = IntakeConstants.kPivotI;
+    private double m_lastPivotD = IntakeConstants.kPivotD;
+    private double m_lastPivotMaxOutput = 0.6;
 
     public Intake() {
         // Initialize Motors
@@ -50,6 +58,12 @@ public class Intake extends SubsystemBase {
         // Flash the configuration to the motor permanently
         m_pivotMotor.configure(pivotConfig, com.revrobotics.ResetMode.kResetSafeParameters, com.revrobotics.PersistMode.kPersistParameters);
 
+        SmartDashboard.putNumber("Intake/Pivot/kP", IntakeConstants.kPivotP);
+        SmartDashboard.putNumber("Intake/Pivot/kI", IntakeConstants.kPivotI);
+        SmartDashboard.putNumber("Intake/Pivot/kD", IntakeConstants.kPivotD);
+        SmartDashboard.putNumber("Intake/Pivot/MaxOutput", 0.6);
+        SmartDashboard.putNumber("Intake/Pivot/ManualSpeed", 0.15);
+
         // ==========================================================
         // ROLLER MOTOR CONFIGURATION
         // ==========================================================
@@ -62,7 +76,26 @@ public class Intake extends SubsystemBase {
     }
 
     @Override
-    public void periodic() {}
+    public void periodic() {
+        SmartDashboard.putNumber("Intake/ArmAngleDeg", getPivotAngle());
+
+        m_manualSpeedLimit = SmartDashboard.getNumber("Intake/Pivot/ManualSpeed", m_manualSpeedLimit);
+        double p = SmartDashboard.getNumber("Intake/Pivot/kP", m_lastPivotP);
+        double i = SmartDashboard.getNumber("Intake/Pivot/kI", m_lastPivotI);
+        double d = SmartDashboard.getNumber("Intake/Pivot/kD", m_lastPivotD);
+        double maxOut = SmartDashboard.getNumber("Intake/Pivot/MaxOutput", m_lastPivotMaxOutput);
+        if (p != m_lastPivotP || i != m_lastPivotI || d != m_lastPivotD || maxOut != m_lastPivotMaxOutput) {
+            SparkMaxConfig config = new SparkMaxConfig();
+            config.closedLoop.pid(p, i, d).outputRange(-maxOut, maxOut);
+            m_pivotMotor.configure(config, com.revrobotics.ResetMode.kNoResetSafeParameters, com.revrobotics.PersistMode.kNoPersistParameters);
+            m_lastPivotP = p; m_lastPivotI = i; m_lastPivotD = d; m_lastPivotMaxOutput = maxOut;
+        }
+    }
+
+    /** Zeros the arm relative encoder at the current position. */
+    public void zeroPivotEncoder() {
+        m_pivotMotor.getEncoder().setPosition(0.0);
+    }
 
     public double getPivotAngle() { return m_pivotEncoder.getPosition(); }
     public double getPivotOutput() { return m_pivotMotor.getAppliedOutput(); }
@@ -105,7 +138,7 @@ public class Intake extends SubsystemBase {
      * Max output is capped at 15% so nothing moves dangerously fast in test mode.
      */
     public void runPivotManual(double joystickInput) {
-        m_pivotMotor.set(joystickInput * 0.15);
+        m_pivotMotor.set(joystickInput * m_manualSpeedLimit);
     }
 
     /**
