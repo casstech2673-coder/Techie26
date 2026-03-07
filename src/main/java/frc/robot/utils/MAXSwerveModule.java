@@ -17,6 +17,7 @@ import com.revrobotics.AbsoluteEncoder;
 import com.revrobotics.RelativeEncoder;
 import com.revrobotics.PersistMode;
 import com.revrobotics.ResetMode;
+import com.revrobotics.spark.config.SparkFlexConfig;
 
 public class MAXSwerveModule {
   private final SparkFlex m_drivingSpark; // NEO Vortex
@@ -38,6 +39,10 @@ public class MAXSwerveModule {
    * Encoder.
    */
   public MAXSwerveModule(int drivingCANId, int turningCANId, double chassisAngularOffset) {
+    this(drivingCANId, turningCANId, chassisAngularOffset, false);
+  }
+
+  public MAXSwerveModule(int drivingCANId, int turningCANId, double chassisAngularOffset, boolean driveInverted) {
     m_drivingSpark = new SparkFlex(drivingCANId, MotorType.kBrushless);
     m_turningSpark = new SparkMax(turningCANId, MotorType.kBrushless);
 
@@ -47,13 +52,16 @@ public class MAXSwerveModule {
     m_drivingClosedLoopController = m_drivingSpark.getClosedLoopController();
     m_turningClosedLoopController = m_turningSpark.getClosedLoopController();
 
-    // Apply the respective configurations to the SPARKS. Reset parameters before
-    // applying the configuration to bring the SPARK to a known good state. Persist
-    // the settings to the SPARK to avoid losing them on a power cycle.
     m_drivingSpark.configure(Configs.MAXSwerveModule.drivingConfig, ResetMode.kResetSafeParameters,
         PersistMode.kPersistParameters);
     m_turningSpark.configure(Configs.MAXSwerveModule.turningConfig, ResetMode.kResetSafeParameters,
         PersistMode.kPersistParameters);
+
+    if (driveInverted) {
+      SparkFlexConfig invertConfig = new SparkFlexConfig();
+      invertConfig.inverted(true);
+      m_drivingSpark.configure(invertConfig, ResetMode.kNoResetSafeParameters, PersistMode.kNoPersistParameters);
+    }
 
     m_chassisAngularOffset = chassisAngularOffset;
     m_desiredState.angle = new Rotation2d(m_turningEncoder.getPosition());

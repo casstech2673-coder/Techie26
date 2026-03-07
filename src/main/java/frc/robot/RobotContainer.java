@@ -160,15 +160,17 @@ public class RobotContainer {
         Commands.runOnce(() -> m_intake.zeroPivotEncoder())
     );
 
-    // Y (hold) : Hopper + flywheels run slowly together; release = stop both
+    // Y (hold) : Hopper + flywheels + intake rollers run slowly together; release = stop all
     m_operatorController.y().whileTrue(
         Commands.run(() -> {
             m_shooter.setFlywheelVelocity(-10.0);
             m_hopper.runSlow();
-        }, m_shooter, m_hopper)
+            m_intake.runRollersSlow();
+        }, m_shooter, m_hopper, m_intake)
         .finallyDo(() -> {
             m_shooter.stopFlywheels();
             m_hopper.stop();
+            m_intake.stopRollers();
         })
     );
 

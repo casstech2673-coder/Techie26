@@ -129,7 +129,7 @@ public final class Constants {
 
         // Roller Speed
         public static final double kIntakeRollerSpeed = 0.8; // TODO: 80% power
-        public static final double kCreepSpeed = -0.10;       // 5% — slow/test mode
+        public static final double kCreepSpeed = 0.3;       // 5% — slow/test mode
 
         // TODO: Pivot PID Gains (Needs tuning)
         public static final double kPivotP = 0.05;
