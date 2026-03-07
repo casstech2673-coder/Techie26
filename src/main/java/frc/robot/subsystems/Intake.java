@@ -70,7 +70,7 @@ public class Intake extends SubsystemBase {
         SparkFlexConfig rollerConfig = new SparkFlexConfig();
         
         rollerConfig.inverted(false); 
-        rollerConfig.smartCurrentLimit(50);
+        rollerConfig.smartCurrentLimit(40);
         
         m_rollerMotor.configure(rollerConfig, com.revrobotics.ResetMode.kResetSafeParameters, com.revrobotics.PersistMode.kPersistParameters);
     }
