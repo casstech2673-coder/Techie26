@@ -146,6 +146,10 @@ public class RobotContainer {
         if (hoodInput != 0.0) {
             m_shooter.setHoodPercent(hoodInput * -0.15);
         }
+
+        // Turret: right stick X → open-loop manual; stops when centered
+        double turretInput = MathUtil.applyDeadband(m_operatorController.getRightX(), 0.1);
+        m_shooter.runTurretManual(turretInput);
     }, m_shooter));
 
     // --- Hopper default command ---

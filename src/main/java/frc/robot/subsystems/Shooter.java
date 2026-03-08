@@ -232,6 +232,11 @@ public class Shooter extends SubsystemBase {
         m_rightFlywheel.stopMotor();
     }
 
+    /** Open-loop turret control; output is clamped to the Turret/MaxOutput limit. */
+    public void runTurretManual(double joystickInput) {
+        m_turretMotor.set(joystickInput * m_lastTurretMaxOutput);
+    }
+
     /** Open-loop hood control; output is clamped to the SmartDashboard MaxPercent limit. */
     public void setHoodPercent(double percent) {
         m_hoodMotor.setControl(m_dutyCycleRequest.withOutput(MathUtil.clamp(percent, -m_hoodMaxPercent, m_hoodMaxPercent)));
