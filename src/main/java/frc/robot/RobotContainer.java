@@ -152,7 +152,7 @@ public class RobotContainer {
     // Hold B = run slow; release = stop.
     m_hopper.setDefaultCommand(Commands.run(() -> {
         if (m_operatorController.b().getAsBoolean()) {
-            m_hopper.runSlow();
+            m_hopper.reverse();
         } else {
             m_hopper.stop();
         }

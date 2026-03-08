@@ -76,7 +76,7 @@ public class Hopper extends SubsystemBase {
     public void reverse() {
         // Manual override for unjamming
         m_isFeedingSequence = false;
-        m_vortex.set(-HopperConstants.kFeedSpeed);
+        m_vortex.set(HopperConstants.kFeedSpeed);
     }
 
     /**
