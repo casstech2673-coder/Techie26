@@ -67,6 +67,7 @@ public class Shooter extends SubsystemBase {
         configureMotors();
         populateInterpolationMaps();
 
+        SmartDashboard.putNumber("Hood/HomingCurrentThreshold", 8.0);
         SmartDashboard.putNumber("Hood/kP", ShooterConstants.kPositionP);
         SmartDashboard.putNumber("Hood/kI", ShooterConstants.kPositionI);
         SmartDashboard.putNumber("Hood/kD", ShooterConstants.kPositionD);
@@ -135,7 +136,11 @@ public class Shooter extends SubsystemBase {
     @Override
     public void periodic() {
         SmartDashboard.putNumber("Hood/Rotations", getHoodRotations());
+        SmartDashboard.putNumber("Hood/TargetRotations", m_targetHoodRotations);
+        SmartDashboard.putNumber("Hood/CurrentAmps", getHoodCurrent());
         SmartDashboard.putNumber("Shooter/FlywheelRPS", getFlywheelRps());
+        SmartDashboard.putNumber("Shooter/TargetRPS", m_targetFlywheelRps);
+        SmartDashboard.putNumber("Turret/Rotations", getTurretRotations());
 
         // --- Hood PID live tuning ---
         m_hoodMaxPercent = SmartDashboard.getNumber("Hood/MaxPercent", m_hoodMaxPercent);
@@ -241,6 +246,7 @@ public class Shooter extends SubsystemBase {
 
     public double getTargetRps() { return m_targetFlywheelRps; }
     public double getTargetHood() { return m_targetHoodRotations; }
+    public double getHoodCurrent() { return m_hoodMotor.getStatorCurrent().getValueAsDouble(); }
 
     // ==========================================================
     // "READY TO FIRE" LOGIC

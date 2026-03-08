@@ -101,6 +101,10 @@ public final class Constants {
         public static final double kFlywheelD = 0.0;
         public static final double kFlywheelV = 0.12; // Feedforward (Crucial for Velocity)
 
+        // Hood gear ratio: 36 motor rotations per 1 full hood revolution
+        public static final double kHoodGearRatio = 36.0;
+        public static final double kHoodDegreesToRotations = kHoodGearRatio / 360.0;
+
         // Hood PID (TalonFX, units = motor rotations)
         public static final double kPositionP = 2.0;
         public static final double kPositionI = 0.0;

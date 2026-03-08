@@ -12,6 +12,7 @@ import edu.wpi.first.wpilibj2.command.Commands;
 import edu.wpi.first.wpilibj2.command.button.CommandXboxController;
 // import frc.robot.Superstructure.SystemState; // TESTING MODE: commented out
 // import frc.robot.Superstructure.TargetMode;  // TESTING MODE: commented out
+import frc.robot.Constants.ShooterConstants;
 import frc.robot.commands.TeleopDrive;
 // import frc.robot.commands.TuneShooter; // TESTING MODE: commented out
 import frc.robot.subsystems.Hopper;
@@ -55,6 +56,10 @@ public class RobotContainer {
 
   // Autonomous Chooser
   private final SendableChooser<Command> autoChooser;
+
+  // Testing mode: adjustable flywheel/hood setpoints
+  private double m_flywheelTarget = -10.0; // RPS (negative = forward)
+  private double m_hoodTarget = 0.0;       // encoder rotations
 
   public RobotContainer() {
     // Drivetrain default command — unchanged
@@ -128,16 +133,19 @@ public class RobotContainer {
     // Reads A for flywheels and right stick Y for hood every tick.
     // Hood stops (holds with 0 output) when stick is centered.
     m_shooter.setDefaultCommand(Commands.run(() -> {
-        // Flywheels: hold A = ~5 RPS (very slow), otherwise stop
+        // Flywheels: hold A = m_flywheelTarget RPS (tunable via D-pad), otherwise stop
         if (m_operatorController.a().getAsBoolean()) {
-            m_shooter.setFlywheelVelocity(-10.0);
+            m_shooter.setFlywheelVelocity(m_flywheelTarget);
         } else {
             m_shooter.stopFlywheels();
         }
 
-        // Hood: right stick Y → open-loop slow (10% max), zeroes when centered
+        // Hood: right stick Y → open-loop slow; only runs when stick is active
+        // (leaves position control intact when stick is centered)
         double hoodInput = MathUtil.applyDeadband(-m_operatorController.getRightY(), 0.1);
-        m_shooter.setHoodPercent(hoodInput * -1.0);
+        if (hoodInput != 0.0) {
+            m_shooter.setHoodPercent(hoodInput * -1.0);
+        }
     }, m_shooter));
 
     // --- Hopper default command ---
@@ -151,8 +159,16 @@ public class RobotContainer {
     }, m_hopper));
 
     // RB : Zero hood encoder at current position
+    
+    // RB: Home hood — drive backwards until amp spike, then zero encoder
     m_operatorController.rightBumper().onTrue(
-        Commands.runOnce(() -> m_shooter.zeroHoodEncoder())
+        Commands.run(() -> m_shooter.setHoodPercent(0.10), m_shooter)
+            .until(() -> m_shooter.getHoodCurrent() >
+                SmartDashboard.getNumber("Hood/HomingCurrentThreshold", 8.0))
+            .finallyDo(() -> {
+                m_shooter.setHoodPercent(0);
+                m_shooter.zeroHoodEncoder();
+            })
     );
 
     // LB : Zero arm (intake pivot) encoder at current position
@@ -172,6 +188,38 @@ public class RobotContainer {
             m_hopper.stop();
             m_intake.stopRollers();
         })
+    );
+
+    // D-pad up/down: adjust flywheel speed setpoint ±1 RPS
+    m_operatorController.povUp().onTrue(Commands.runOnce(() -> {
+        m_flywheelTarget -= 1.0; // more negative = faster
+        SmartDashboard.putNumber("Shooter/SpeedSetpoint", m_flywheelTarget);
+    }));
+    m_operatorController.povDown().onTrue(Commands.runOnce(() -> {
+        m_flywheelTarget += 1.0; // less negative = slower
+        SmartDashboard.putNumber("Shooter/SpeedSetpoint", m_flywheelTarget);
+    }));
+
+    // Right Trigger: set hood to 20 degrees (converted via 36:1 gear ratio)
+    m_operatorController.rightTrigger().onTrue(
+        Commands.runOnce(() -> {
+            m_hoodTarget = 20.0 * ShooterConstants.kHoodDegreesToRotations;
+            m_shooter.setHoodPosition(m_hoodTarget);
+        }, m_shooter)
+    );
+
+    // D-pad right/left: adjust hood position ±2 degrees
+    m_operatorController.povRight().onTrue(
+        Commands.runOnce(() -> {
+            m_hoodTarget += 2.0 * ShooterConstants.kHoodDegreesToRotations;
+            m_shooter.setHoodPosition(m_hoodTarget);
+        }, m_shooter)
+    );
+    m_operatorController.povLeft().onTrue(
+        Commands.runOnce(() -> {
+            m_hoodTarget -= 2.0 * ShooterConstants.kHoodDegreesToRotations;
+            m_shooter.setHoodPosition(m_hoodTarget);
+        }, m_shooter)
     );
 
     // --- Intake default command ---
