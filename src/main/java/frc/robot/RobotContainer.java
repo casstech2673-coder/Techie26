@@ -144,7 +144,7 @@ public class RobotContainer {
         // (leaves position control intact when stick is centered)
         double hoodInput = MathUtil.applyDeadband(-m_operatorController.getRightY(), 0.1);
         if (hoodInput != 0.0) {
-            m_shooter.setHoodPercent(hoodInput * -1.0);
+            m_shooter.setHoodPercent(hoodInput * -0.15);
         }
     }, m_shooter));
 
@@ -162,9 +162,9 @@ public class RobotContainer {
     
     // RB: Home hood — drive backwards until amp spike, then zero encoder
     m_operatorController.rightBumper().onTrue(
-        Commands.run(() -> m_shooter.setHoodPercent(0.10), m_shooter)
+        Commands.run(() -> m_shooter.setHoodPercent(0.20), m_shooter)
             .until(() -> m_shooter.getHoodCurrent() >
-                SmartDashboard.getNumber("Hood/HomingCurrentThreshold", 8.0))
+                SmartDashboard.getNumber("Hood/HomingCurrentThreshold", 15.0))
             .finallyDo(() -> {
                 m_shooter.setHoodPercent(0);
                 m_shooter.zeroHoodEncoder();
