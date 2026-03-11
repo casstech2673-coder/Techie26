@@ -1,5 +1,6 @@
 package frc.robot.subsystems;
 
+// CTRE Imports (For Hood & Flywheels)
 import com.ctre.phoenix6.configs.Slot0Configs;
 import com.ctre.phoenix6.configs.TalonFXConfiguration;
 import com.ctre.phoenix6.controls.DutyCycleOut;
@@ -8,11 +9,11 @@ import com.ctre.phoenix6.controls.VelocityVoltage;
 import com.ctre.phoenix6.hardware.TalonFX;
 import com.ctre.phoenix6.signals.InvertedValue;
 import com.ctre.phoenix6.signals.NeutralModeValue;
+
+// REV Imports (For the Turret — open-loop only, no closed-loop controller needed)
 import com.revrobotics.RelativeEncoder;
-import com.revrobotics.spark.SparkBase.ControlType;
 import com.revrobotics.spark.SparkBase.PersistMode;
 import com.revrobotics.spark.SparkBase.ResetMode;
-import com.revrobotics.spark.SparkClosedLoopController;
 import com.revrobotics.spark.SparkFlex;
 import com.revrobotics.spark.SparkLowLevel.MotorType;
 import com.revrobotics.spark.config.SparkBaseConfig.IdleMode;
@@ -26,10 +27,9 @@ import frc.robot.Constants.ShooterConstants;
 
 public class Shooter extends SubsystemBase {
 
-    // --- Turret: NEO Vortex on SparkFlex ---
+    // --- Turret: NEO Vortex on SparkFlex (open-loop, lookup-table driven) ---
     private final SparkFlex m_turretMotor = new SparkFlex(ShooterConstants.kTurretId, MotorType.kBrushless);
     private final RelativeEncoder m_turretEncoder = m_turretMotor.getEncoder();
-    private final SparkClosedLoopController m_turretController = m_turretMotor.getClosedLoopController();
 
     // --- Hood, Flywheels: TalonFX ---
     private final TalonFX m_hoodMotor = new TalonFX(ShooterConstants.kHoodId);
@@ -41,52 +41,47 @@ public class Shooter extends SubsystemBase {
     private final VelocityVoltage m_velocityRequest = new VelocityVoltage(0);
     private final DutyCycleOut m_dutyCycleRequest = new DutyCycleOut(0);
 
-    // Interpolation Maps (Distance in Meters -> Encoder Space Values)
+    // Flywheel/hood interpolation maps (distance in meters → encoder values)
     private final InterpolatingDoubleTreeMap m_scoreRpsMap = new InterpolatingDoubleTreeMap();
     private final InterpolatingDoubleTreeMap m_scoreHoodMap = new InterpolatingDoubleTreeMap();
     private final InterpolatingDoubleTreeMap m_passRpsMap = new InterpolatingDoubleTreeMap();
     private final InterpolatingDoubleTreeMap m_passHoodMap = new InterpolatingDoubleTreeMap();
 
-    // Target States for Tolerance Checking
-    private double m_targetTurretRotations = 0.0;
+    // Turret power lookup table: |degree error| → duty-cycle magnitude [0..1]
+    // Applied symmetrically: positive error → positive power, negative → negative.
+    private final InterpolatingDoubleTreeMap m_turretPowerMap = new InterpolatingDoubleTreeMap();
+
+    // Target states for tolerance checking
+    private double m_targetTurretDeg = 180.0; // 180° = home (straight backward)
     private double m_targetHoodRotations = 0.0;
     private double m_targetFlywheelRps = 0.0;
 
-    // Live-tuning: last values applied from SmartDashboard
+    // Hood live-tuning state
     private double m_hoodMaxPercent = 0.20;
     private double m_lastHoodP = ShooterConstants.kPositionP;
     private double m_lastHoodI = ShooterConstants.kPositionI;
     private double m_lastHoodD = ShooterConstants.kPositionD;
 
-    private double m_lastTurretP = ShooterConstants.kTurretP;
-    private double m_lastTurretI = ShooterConstants.kTurretI;
-    private double m_lastTurretD = ShooterConstants.kTurretD;
-    private double m_lastTurretMaxOutput = 0.5;
-
     public Shooter() {
         configureMotors();
         populateInterpolationMaps();
+        populateTurretPowerMap();
 
         SmartDashboard.putNumber("Hood/HomingCurrentThreshold", 8.0);
         SmartDashboard.putNumber("Hood/kP", ShooterConstants.kPositionP);
         SmartDashboard.putNumber("Hood/kI", ShooterConstants.kPositionI);
         SmartDashboard.putNumber("Hood/kD", ShooterConstants.kPositionD);
         SmartDashboard.putNumber("Hood/MaxPercent", 0.30);
-
-        SmartDashboard.putNumber("Turret/kP", ShooterConstants.kTurretP);
-        SmartDashboard.putNumber("Turret/kI", ShooterConstants.kTurretI);
-        SmartDashboard.putNumber("Turret/kD", ShooterConstants.kTurretD);
-        SmartDashboard.putNumber("Turret/MaxOutput", 0.5);
     }
 
     private void configureMotors() {
-        // --- TURRET (SparkFlex / NEO Vortex, Position Control) ---
+        // --- TURRET (SparkFlex / NEO Vortex, open-loop duty cycle) ---
+        // No closedLoop block needed — we drive it open-loop via m_turretMotor.set().
+        // Brake mode makes it hold position passively when power = 0.
+        // Soft limits are hardware-enforced by the SparkFlex even in open-loop.
         SparkFlexConfig turretConfig = new SparkFlexConfig();
         turretConfig.idleMode(IdleMode.kBrake);
         turretConfig.smartCurrentLimit(40);
-        turretConfig.closedLoop
-                .pid(ShooterConstants.kTurretP, ShooterConstants.kTurretI, ShooterConstants.kTurretD)
-                .outputRange(-0.5, 0.5);
         turretConfig.softLimit
                 .forwardSoftLimit((float) ShooterConstants.kTurretMaxRotations)
                 .reverseSoftLimit((float) ShooterConstants.kTurretMinRotations)
@@ -118,6 +113,7 @@ public class Shooter extends SubsystemBase {
         hoodConfig.Slot0.kD = ShooterConstants.kPositionD;
         hoodConfig.CurrentLimits.StatorCurrentLimit = 40;
         hoodConfig.CurrentLimits.StatorCurrentLimitEnable = true;
+        hoodConfig.MotorOutput.Inverted = InvertedValue.Clockwise_Positive; // TODO: verify on real robot
         m_hoodMotor.getConfigurator().apply(hoodConfig);
         m_hoodMotor.setNeutralMode(NeutralModeValue.Brake);
     }
@@ -133,15 +129,38 @@ public class Shooter extends SubsystemBase {
         m_passRpsMap.put(7.0, 55.0);  m_passHoodMap.put(7.0, 7.0);
     }
 
+    /**
+     * Turret power lookup: |error in degrees| → duty-cycle magnitude.
+     *
+     *  Error (°)  │  Power
+     *  ───────────┼────────
+     *     0       │  0.00   within tolerance — no correction
+     *     2       │  0.03   tiny nudge
+     *     5       │  0.07
+     *    10       │  0.14
+     *    20       │  0.25
+     *    45       │  0.40
+     *    90       │  0.50   max (matches the soft-limit range)
+     *
+     * TODO: Tune on the real robot. If the turret overshoots, reduce the upper
+     * values. If it's too sluggish, increase them. Start with the robot on blocks.
+     *
+     * NOTE: If the turret moves away from the target instead of toward it, negate
+     * the power in setTurretTargetDeg() — motor direction depends on wiring.
+     */
+    private void populateTurretPowerMap() {
+        m_turretPowerMap.put(0.0,  0.00);
+        m_turretPowerMap.put(2.0,  0.03);
+        m_turretPowerMap.put(5.0,  0.07);
+        m_turretPowerMap.put(10.0, 0.14);
+        m_turretPowerMap.put(20.0, 0.25);
+        m_turretPowerMap.put(45.0, 0.40);
+        m_turretPowerMap.put(90.0, 0.50);
+        m_turretPowerMap.put(180.0, 0.50);
+    }
+
     @Override
     public void periodic() {
-        SmartDashboard.putNumber("Hood/Rotations", getHoodRotations());
-        SmartDashboard.putNumber("Hood/TargetRotations", m_targetHoodRotations);
-        SmartDashboard.putNumber("Hood/CurrentAmps", getHoodCurrent());
-        SmartDashboard.putNumber("Shooter/FlywheelRPS", getFlywheelRps());
-        SmartDashboard.putNumber("Shooter/TargetRPS", m_targetFlywheelRps);
-        SmartDashboard.putNumber("Turret/Rotations", getTurretRotations());
-
         // --- Hood PID live tuning ---
         m_hoodMaxPercent = SmartDashboard.getNumber("Hood/MaxPercent", m_hoodMaxPercent);
         double hoodP = SmartDashboard.getNumber("Hood/kP", m_lastHoodP);
@@ -152,19 +171,6 @@ public class Shooter extends SubsystemBase {
             slot0.kP = hoodP; slot0.kI = hoodI; slot0.kD = hoodD;
             m_hoodMotor.getConfigurator().apply(slot0);
             m_lastHoodP = hoodP; m_lastHoodI = hoodI; m_lastHoodD = hoodD;
-        }
-
-        // --- Turret PID live tuning ---
-        double turretP = SmartDashboard.getNumber("Turret/kP", m_lastTurretP);
-        double turretI = SmartDashboard.getNumber("Turret/kI", m_lastTurretI);
-        double turretD = SmartDashboard.getNumber("Turret/kD", m_lastTurretD);
-        double turretMax = SmartDashboard.getNumber("Turret/MaxOutput", m_lastTurretMaxOutput);
-        if (turretP != m_lastTurretP || turretI != m_lastTurretI || turretD != m_lastTurretD || turretMax != m_lastTurretMaxOutput) {
-            SparkFlexConfig config = new SparkFlexConfig();
-            config.closedLoop.pid(turretP, turretI, turretD).outputRange(-turretMax, turretMax);
-            m_turretMotor.configure(config, com.revrobotics.ResetMode.kNoResetSafeParameters, com.revrobotics.PersistMode.kNoPersistParameters);
-            m_lastTurretP = turretP; m_lastTurretI = turretI; m_lastTurretD = turretD;
-            m_lastTurretMaxOutput = turretMax;
         }
     }
 
@@ -194,31 +200,41 @@ public class Shooter extends SubsystemBase {
     }
 
     /**
-     * Commands the turret to a target rotation via shortest-path, respecting soft limits.
+     * Commands the turret toward a target physical angle.
+     *
+     * Convention:
+     *   180° = straight backward (home / encoder-zero position)
+     *    90° = left side of robot
+     *   270° = right side of robot
+     *
+     * The error (target − current) is looked up in the power table to produce a
+     * duty-cycle output. The SparkFlex's soft limits act as a hardware backstop.
+     *
+     * If the turret runs away from the target on first test, negate {@code power}
+     * below — the motor polarity depends on physical wiring.
      */
-    public void setTurretPosition(double targetRotations) {
+    public void setTurretTargetDeg(double targetDeg) {
+        // Clamp target to the physically reachable range (90° – 270°)
+        double clampedTarget = MathUtil.clamp(targetDeg, 90.0, 270.0);
+        m_targetTurretDeg = clampedTarget;
+
+        double currentDeg = getTurretAngleDeg();
+        double errorDeg = clampedTarget - currentDeg;
+
+        // Software guard: don't command further into a hard stop
         double currentRotations = getTurretRotations();
-        double fullSweep = ShooterConstants.kTurretMotorRotationsPerTurretRevolution;
-
-        // Find shortest path
-        double error = MathUtil.inputModulus(targetRotations - currentRotations, -fullSweep / 2.0, fullSweep / 2.0);
-        double continuousTarget = currentRotations + error;
-
-        // If shortest path breaks a wire, go the long way
-        if (continuousTarget > ShooterConstants.kTurretMaxRotations) {
-            continuousTarget -= fullSweep;
-        } else if (continuousTarget < ShooterConstants.kTurretMinRotations) {
-            continuousTarget += fullSweep;
+        if (currentRotations >= ShooterConstants.kTurretMaxRotations && errorDeg > 0) {
+            m_turretMotor.set(0);
+            return;
+        }
+        if (currentRotations <= ShooterConstants.kTurretMinRotations && errorDeg < 0) {
+            m_turretMotor.set(0);
+            return;
         }
 
-        continuousTarget = MathUtil.clamp(
-            continuousTarget,
-            ShooterConstants.kTurretMinRotations,
-            ShooterConstants.kTurretMaxRotations
-        );
-
-        m_targetTurretRotations = continuousTarget;
-        m_turretController.setReference(continuousTarget, ControlType.kPosition);
+        // Lookup: magnitude from table, direction from sign of error
+        double power = m_turretPowerMap.get(Math.abs(errorDeg)) * Math.signum(errorDeg);
+        m_turretMotor.set(power);
     }
 
     /** Zeros the hood encoder at the current position. */
@@ -226,36 +242,38 @@ public class Shooter extends SubsystemBase {
         m_hoodMotor.setPosition(0.0);
     }
 
-    /** Stops only the flywheels (for test mode). */
+    /** Stops only the flywheels. */
     public void stopFlywheels() {
         m_leftFlywheel.stopMotor();
         m_rightFlywheel.stopMotor();
     }
 
-    /** Open-loop turret control; output is clamped to the Turret/MaxOutput limit. */
+    /** Open-loop turret control for manual joystick override; capped at 50% output. */
     public void runTurretManual(double joystickInput) {
-        m_turretMotor.set(joystickInput * m_lastTurretMaxOutput);
+        m_turretMotor.set(joystickInput * 0.5);
     }
 
-    /** Open-loop hood control; output is clamped to the SmartDashboard MaxPercent limit. */
+    /** Open-loop hood control, clamped to SmartDashboard MaxPercent. */
     public void setHoodPercent(double percent) {
-        m_hoodMotor.setControl(m_dutyCycleRequest.withOutput(MathUtil.clamp(percent, -m_hoodMaxPercent, m_hoodMaxPercent)));
+        m_hoodMotor.setControl(m_dutyCycleRequest.withOutput(
+                MathUtil.clamp(percent, -m_hoodMaxPercent, m_hoodMaxPercent)));
     }
 
     public void stopShooter() {
         m_leftFlywheel.stopMotor();
         m_rightFlywheel.stopMotor();
-        setTurretPosition(0.0);
+        setTurretTargetDeg(180.0); // return turret to home
         setHoodPosition(0.0);
     }
 
-    public double getTargetRps() { return m_targetFlywheelRps; }
-    public double getTargetHood() { return m_targetHoodRotations; }
-    public double getHoodCurrent() { return m_hoodMotor.getStatorCurrent().getValueAsDouble(); }
+    // ==========================================================
+    // GETTERS
+    // ==========================================================
 
-    // ==========================================================
-    // "READY TO FIRE" LOGIC
-    // ==========================================================
+    public double getTargetRps()       { return m_targetFlywheelRps; }
+    public double getTargetHood()      { return m_targetHoodRotations; }
+    public double getTargetTurretDeg() { return m_targetTurretDeg; }
+    public double getHoodCurrent() { return m_hoodMotor.getStatorCurrent().getValueAsDouble(); }
 
     public double getFlywheelRps() {
         return m_leftFlywheel.getVelocity().getValueAsDouble();
@@ -265,14 +283,28 @@ public class Shooter extends SubsystemBase {
         return m_turretEncoder.getPosition();
     }
 
+    /**
+     * Turret angle in physical degrees:
+     *   180° = straight backward (home, encoder = 0)
+     *    90° = left side  (encoder = kTurretMinRotations)
+     *   270° = right side (encoder = kTurretMaxRotations)
+     */
+    public double getTurretAngleDeg() {
+        return (getTurretRotations() / ShooterConstants.kTurretMotorRotationsPerTurretRevolution)
+                * 360.0 + 180.0;
+    }
+
     public double getHoodRotations() {
         return m_hoodMotor.getPosition().getValueAsDouble();
     }
 
     public boolean isReadyToFire() {
-        boolean flywheelsReady = Math.abs(getFlywheelRps() - m_targetFlywheelRps) <= ShooterConstants.kFlywheelToleranceRPS;
-        boolean turretReady = Math.abs(getTurretRotations() - m_targetTurretRotations) <= ShooterConstants.kTurretToleranceRotations;
-        boolean hoodReady = Math.abs(getHoodRotations() - m_targetHoodRotations) <= ShooterConstants.kHoodToleranceRotations;
+        boolean flywheelsReady = Math.abs(getFlywheelRps() - m_targetFlywheelRps)
+                <= ShooterConstants.kFlywheelToleranceRPS;
+        boolean turretReady = Math.abs(getTurretAngleDeg() - m_targetTurretDeg)
+                <= ShooterConstants.kTurretToleranceDeg;
+        boolean hoodReady = Math.abs(getHoodRotations() - m_targetHoodRotations)
+                <= ShooterConstants.kHoodToleranceRotations;
 
         if (m_targetFlywheelRps == 0) return false;
 

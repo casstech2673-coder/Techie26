@@ -38,54 +38,50 @@ public class RobotTelemetry extends SubsystemBase {
         // ==========================================================
         SmartDashboard.putString("DRIVER/System State", m_superStructure.getState().toString());
         SmartDashboard.putBoolean("DRIVER/Shooter Ready", m_shooter.isReadyToFire());
-        
-        // Pulls string from game manager
         SmartDashboard.putString("DRIVER/Hub Status", m_gameManager.getHubStatusString());
 
         // ==========================================================
-        // MECHANISM DATA (Always On)
+        // MATCH (Always On)
         // ==========================================================
         SmartDashboard.putNumber("MECH/Match Time Left", Math.round(DriverStation.getMatchTime()));
-        SmartDashboard.putNumber("MECH/Shooter RPS", m_shooter.getFlywheelRps());
-        SmartDashboard.putNumber("MECH/Intake Angle", m_intake.getPivotAngle());
         SmartDashboard.putString("MECH/Target Mode", m_superStructure.getTargetMode().toString());
 
         // ==========================================================
-        // DEBUG & TUNING DATA (Toggleable)
+        // SHOOTER (Always On)
+        // ==========================================================
+        SmartDashboard.putNumber("Shooter/FlywheelRPS",    m_shooter.getFlywheelRps());
+        SmartDashboard.putNumber("Shooter/TargetRPS",      m_shooter.getTargetRps());
+        SmartDashboard.putNumber("Hood/Rotations",         m_shooter.getHoodRotations());
+        SmartDashboard.putNumber("Hood/TargetRotations",   m_shooter.getTargetHood());
+        SmartDashboard.putNumber("Hood/CurrentAmps",       m_shooter.getHoodCurrent());
+        SmartDashboard.putNumber("Turret/Rotations",       m_shooter.getTurretRotations());
+        SmartDashboard.putNumber("Turret/AngleDeg",        m_shooter.getTurretAngleDeg());
+        SmartDashboard.putNumber("Turret/TargetDeg",       m_shooter.getTargetTurretDeg());
+        SmartDashboard.putNumber("Turret/ErrorDeg",        m_shooter.getTargetTurretDeg() - m_shooter.getTurretAngleDeg());
+
+        // ==========================================================
+        // INTAKE & HOPPER (Always On)
+        // ==========================================================
+        SmartDashboard.putNumber("Intake/ArmRotations",   m_intake.getPivotPosition());
+        SmartDashboard.putNumber("Intake/PivotOutput",    m_intake.getPivotOutput());
+        SmartDashboard.putNumber("Hopper/CurrentAmps",    m_hopper.getVortexCurrent());
+        SmartDashboard.putBoolean("Hopper/IsFeeding",     m_hopper.isFeeding());
+
+        // ==========================================================
+        // DEBUG & TUNING (kDebugMode only — set false during matches)
         // ==========================================================
         if (kDebugMode) {
-            // Swerve
             var pose = m_swerve.getPose();
-            SmartDashboard.putNumber("DEBUG/Pose X", pose.getX());
-            SmartDashboard.putNumber("DEBUG/Pose Y", pose.getY());
+            SmartDashboard.putNumber("DEBUG/Pose X",       pose.getX());
+            SmartDashboard.putNumber("DEBUG/Pose Y",       pose.getY());
             SmartDashboard.putNumber("DEBUG/Pose Heading", pose.getRotation().getDegrees());
 
-            // Shooter
-            SmartDashboard.putNumber("DEBUG/Turret Rotations", m_shooter.getTurretRotations());
-            SmartDashboard.putNumber("DEBUG/Hood Rotations", m_shooter.getHoodRotations());
-
-            // Motor Outputs & Currents
-            SmartDashboard.putNumber("DEBUG/Intake Output", m_intake.getPivotOutput());
-            SmartDashboard.putNumber("DEBUG/Hopper Current", m_hopper.getVortexCurrent());
-            SmartDashboard.putBoolean("DEBUG/Hopper Feeding", m_hopper.isFeeding());
-        }
-
-        // ==========================================================
-        // TUNING DATA (For Calibration)
-        // ==========================================================
-        if (kDebugMode) {
-            // Distance calculations for your Interpolation Maps
-            // These pull the math directly from Superstructure so you know they match!
-            SmartDashboard.putNumber("TUNING/Dist to Hub (m)", m_superStructure.getDistToHub());
+            // Distance math from Superstructure — confirms interpolation inputs are correct
+            SmartDashboard.putNumber("TUNING/Dist to Hub (m)",  m_superStructure.getDistToHub());
             SmartDashboard.putNumber("TUNING/Dist to Wall (m)", m_superStructure.getDistToWall());
-
-            // Target Values (What the robot is CURRENTLY trying to hit)
-            // This helps you see if the interpolation is working correctly.
-            SmartDashboard.putNumber("TUNING/Map Target RPS", m_shooter.getTargetRps());
-            SmartDashboard.putNumber("TUNING/Map Target Hood", m_shooter.getTargetHood());
-            
-            // The TUNING/Live Test RPS/Hood will automatically appear next to these 
-            // when you hold the Back button and run the TuneShooterCommand
+            SmartDashboard.putNumber("TUNING/Map Target RPS",   m_shooter.getTargetRps());
+            SmartDashboard.putNumber("TUNING/Map Target Hood",  m_shooter.getTargetHood());
+            // TUNING/Current Test RPS and TUNING/Current Test Hood appear here while TuneShooter runs
         }
     }
 }

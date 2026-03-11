@@ -6,7 +6,6 @@ import com.revrobotics.spark.config.SparkBaseConfig.IdleMode;
 import com.revrobotics.spark.config.SparkMaxConfig;
 
 import edu.wpi.first.wpilibj.Timer;
-import edu.wpi.first.wpilibj.smartdashboard.SmartDashboard;
 import edu.wpi.first.wpilibj2.command.SubsystemBase;
 import frc.robot.Constants.HopperConstants;
 
@@ -32,7 +31,6 @@ public class Hopper extends SubsystemBase {
 
     @Override
     public void periodic() {
-        SmartDashboard.putNumber("Hopper/CurrentAmps", getVortexCurrent());
     }
 
     public double getVortexCurrent() { return m_vortex.getOutputCurrent(); }

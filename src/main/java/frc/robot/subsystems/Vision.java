@@ -18,13 +18,22 @@ public class Vision extends SubsystemBase {
 
     private final SwerveDrive m_swerve;
 
-    // Arducam (PhotonVision) — global positioning
+    // Arducam (PhotonVision) — secondary global pose source
     private final PhotonCamera m_arducam;
     private final PhotonPoseEstimator m_photonPoseEstimator;
 
-    // Limelight names (must match names set in each Limelight's Web UI)
-    private static final String GLOBAL_LIMELIGHT = "limelight-3a"; // Fixed to robot, used for global pose
-    private static final String TURRET_LIMELIGHT  = "limelight-4";  // Mounted on turret, used for target lock
+    // Limelight 4 — primary global pose source via MegaTag2.
+    //
+    // Physical position relative to robot center (WPILib frame: +X forward, +Y left, +Z up).
+    // *** Configure these values in the Limelight web UI under "Robot Space" ***
+    //
+    //   Forward (X): -(29 - 0.5) / 2  in = -14.25 in  (-0.362 m)  [14.25 in behind center]
+    //   Left    (Y): +(25/2 - 10)     in =  +2.50 in  (+0.064 m)  [10 in right of back-left corner]
+    //   Up      (Z):  13.375          in              ( 0.340 m)  [13 3/8 in above floor]
+    //   Yaw       :  180°  (camera faces rearward)
+    //
+    // limelight-4 is fixed to the robot chassis (not turret-mounted).
+    private static final String GLOBAL_LIMELIGHT = "limelight-4";
 
     public Vision(SwerveDrive swerve) {
         this.m_swerve = swerve;
@@ -33,6 +42,7 @@ public class Vision extends SubsystemBase {
 
         AprilTagFieldLayout fieldLayout = AprilTagFieldLayout.loadField(AprilTagFields.kDefaultField);
 
+        // TODO: Update this transform to match the Arducam's actual mount position
         Transform3d robotToCam = new Transform3d(
                 new Translation3d(0.2, 0.0, 0.5),
                 new Rotation3d(0, 0, 0)
@@ -47,21 +57,36 @@ public class Vision extends SubsystemBase {
 
     @Override
     public void periodic() {
-        // limelight-3a and Arducam feed global pose into drivetrain odometry
+        // Both sources feed the SwerveDrivePoseEstimator for fused odometry.
         updatePoseFromLimelight(GLOBAL_LIMELIGHT);
         updatePoseFromArducam();
-        // limelight-4 (turret) is NOT used for pose — only for target lock via getTurretTxDeg()
     }
 
     // =========================================================================
-    // GLOBAL POSE ESTIMATION (limelight-3a + Arducam)
+    // GLOBAL POSE ESTIMATION
     // =========================================================================
 
+    /**
+     * MegaTag2 workflow:
+     *  1. Push the robot's gyro heading to the Limelight each loop.
+     *     Limelight uses this heading (instead of its internal IMU) to lock
+     *     the rotational component of the pose — the result is a 2D (X, Y)
+     *     fix that is much more stable than MegaTag1, even with only one tag.
+     *  2. Grab the resulting pose estimate and inject it into odometry.
+     */
     private void updatePoseFromLimelight(String limelightName) {
-        LimelightHelpers.PoseEstimate poseEstimate = LimelightHelpers.getBotPoseEstimate_wpiBlue(limelightName);
+        // Supply the robot's current heading so Limelight can compute MegaTag2.
+        // Using the fused pose heading (gyro + wheel odometry) gives Limelight
+        // the most accurate orientation reference we have.
+        double headingDeg = m_swerve.getPose().getRotation().getDegrees();
+        LimelightHelpers.SetRobotOrientation(limelightName, headingDeg, 0, 0, 0, 0, 0);
+
+        LimelightHelpers.PoseEstimate poseEstimate =
+                LimelightHelpers.getBotPoseEstimate_wpiBlue_MegaTag2(limelightName);
 
         if (poseEstimate != null && poseEstimate.tagCount > 0) {
-            // Motion blur rejection
+            // Reject updates when spinning fast: motion blur and rolling shutter
+            // make AprilTag detections unreliable above this angular rate.
             if (Math.abs(m_swerve.getTurnRate()) > VisionConstants.kMaxAngularVelocityForVision) {
                 return;
             }
@@ -79,34 +104,5 @@ public class Vision extends SubsystemBase {
             EstimatedRobotPose estPose = poseResult.get();
             m_swerve.addVisionMeasurement(estPose.estimatedPose.toPose2d(), estPose.timestampSeconds);
         }
-    }
-
-    // =========================================================================
-    // TURRET TARGET LOCK (limelight-4, mounted on turret)
-    // =========================================================================
-
-    /**
-     * Returns true if limelight-4 currently sees a valid target.
-     */
-    public boolean turretHasTarget() {
-        return LimelightHelpers.getTV(TURRET_LIMELIGHT);
-    }
-
-    /**
-     * Returns the horizontal offset (tx) from limelight-4 to the primary target, in degrees.
-     * Positive = target is to the right of the crosshair.
-     * Only meaningful when turretHasTarget() is true.
-     */
-    public double getTurretTxDeg() {
-        return LimelightHelpers.getTX(TURRET_LIMELIGHT);
-    }
-
-    /**
-     * Returns the vertical offset (ty) from limelight-4 to the primary target, in degrees.
-     * Positive = target is above the crosshair.
-     * Only meaningful when turretHasTarget() is true.
-     */
-    public double getTurretTyDeg() {
-        return LimelightHelpers.getTY(TURRET_LIMELIGHT);
     }
 }

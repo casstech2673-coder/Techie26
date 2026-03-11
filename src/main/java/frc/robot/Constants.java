@@ -90,10 +90,12 @@ public final class Constants {
         // --- TURRET RESTRAINTS (IN MOTOR ROTATIONS) ---
         // The exact number of NEO Vortex motor rotations needed to spin the turret one full 360-degree circle.
         public static final double kTurretMotorRotationsPerTurretRevolution = (50.0/12)*10; // TODO: DO NOT GUESS. You MUST calculate this via CAD gear ratios or measure it physically using the Spin Test on SmartDashboard.
-        
-        // TODO: Physical hard-stops
-        public static final double kTurretMaxRotations = 41.6; 
-        public static final double kTurretMinRotations = -41.6;
+
+        // Turret home (encoder = 0) points BACKWARD (180° robot-relative).
+        // Limits = 90° to 270°, i.e. ±90° from the home position.
+        // Zero the encoder with the turret physically pointing backward before enabling.
+        public static final double kTurretMaxRotations = kTurretMotorRotationsPerTurretRevolution * (90.0 / 360.0); // ~10.42
+        public static final double kTurretMinRotations = -kTurretMotorRotationsPerTurretRevolution * (90.0 / 360.0); // ~-10.42
 
         // TODO: PID GAINS
         public static final double kFlywheelP = 0.5;
@@ -101,22 +103,18 @@ public final class Constants {
         public static final double kFlywheelD = 0.0;
         public static final double kFlywheelV = 0.12; // Feedforward (Crucial for Velocity)
 
-        // Hood gear ratio: 36 motor rotations per 1 full hood revolution
-        public static final double kHoodGearRatio = 36.0;
-        public static final double kHoodDegreesToRotations = kHoodGearRatio / 360.0;
-
         // Hood PID (TalonFX, units = motor rotations)
         public static final double kPositionP = 2.0;
         public static final double kPositionI = 0.0;
         public static final double kPositionD = 0.0;
 
-        // Turret PID (SparkFlex/NEO Vortex, units = motor rotations)
-        public static final double kTurretP = 0.1; // TODO: Tune on real robot
-        public static final double kTurretI = 0.0;
-        public static final double kTurretD = 0.0;
+        // Turret physical offset: the turret pivot is this far behind the robot center.
+        // Used to compute the turret's actual field position for accurate angle + distance math.
+        public static final double kTurretOffsetMeters = 7.25 * 0.0254; // 7.25 in = 0.1842 m
 
-        // --- TOLERANCES (ENCODER SPACE) ---
-        public static final double kTurretToleranceRotations = 0.5;
+        // --- TOLERANCES ---
+        // Turret is "on target" when the physical angle is within this many degrees of the setpoint.
+        public static final double kTurretToleranceDeg = 3.0; // degrees
         public static final double kHoodToleranceRotations = 0.2;
         public static final double kFlywheelToleranceRPS = 2.0; // Rotations Per Second
     }
@@ -138,6 +136,14 @@ public final class Constants {
         public static final double kPivotP = 0.05;
         public static final double kPivotI = 0.0;
         public static final double kPivotD = 0.0;
+
+        // Arm rotation setpoints (relative encoder, 0 = starting config / stowed upright)
+        public static final double kArmStowedRotations   = 0.0; // TODO: measure if stowed ≠ zero
+        public static final double kArmDeployedRotations = 0.0; // TODO: measure deployed position
+
+        // Jiggle mode: arm oscillates between 0 and kArmJiggleRotations
+        public static final double kArmJiggleRotations  = 0.3;  // TODO: tune
+        public static final double kArmJigglePeriodSec  = 0.6;  // 0.3 s up, 0.3 s down
     }
 
     public static final class HopperConstants {
