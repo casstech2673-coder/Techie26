@@ -46,6 +46,8 @@ public class SwerveDrive extends SubsystemBase {
   // The gyro sensor
   private final Pigeon2 m_gyro = new Pigeon2(DriveConstants.kGyroCanId);
 
+  // Pure wheel-odometry estimator — drives field-relative and PathPlanner.
+  // Vision measurements are intentionally excluded to keep driving stable.
   SwerveDrivePoseEstimator m_poseEstimator = new SwerveDrivePoseEstimator(
     DriveConstants.kDriveKinematics,
     Rotation2d.fromDegrees(m_gyro.getYaw().getValueAsDouble()),
@@ -55,7 +57,21 @@ public class SwerveDrive extends SubsystemBase {
         m_rearLeft.getPosition(),
         m_rearRight.getPosition()
     },
-    new Pose2d() // Initial pose
+    new Pose2d()
+  );
+
+  // Vision-fused estimator — used only for shooter/turret aiming.
+  // Receives the same wheel odometry updates AND vision measurements.
+  private final SwerveDrivePoseEstimator m_visionPoseEstimator = new SwerveDrivePoseEstimator(
+    DriveConstants.kDriveKinematics,
+    Rotation2d.fromDegrees(m_gyro.getYaw().getValueAsDouble()),
+    new SwerveModulePosition[] {
+        m_frontLeft.getPosition(),
+        m_frontRight.getPosition(),
+        m_rearLeft.getPosition(),
+        m_rearRight.getPosition()
+    },
+    new Pose2d()
   );
 
   public SwerveDrive() {
@@ -93,22 +109,30 @@ public class SwerveDrive extends SubsystemBase {
 
   @Override
   public void periodic() {
-    m_poseEstimator.update(
-        Rotation2d.fromDegrees(m_gyro.getYaw().getValueAsDouble()),
-        new SwerveModulePosition[] {
-            m_frontLeft.getPosition(),
-            m_frontRight.getPosition(),
-            m_rearLeft.getPosition(),
-            m_rearRight.getPosition()
-        });
+    var gyroAngle = Rotation2d.fromDegrees(m_gyro.getYaw().getValueAsDouble());
+    var modulePositions = new SwerveModulePosition[] {
+        m_frontLeft.getPosition(),
+        m_frontRight.getPosition(),
+        m_rearLeft.getPosition(),
+        m_rearRight.getPosition()
+    };
+    m_poseEstimator.update(gyroAngle, modulePositions);
+    m_visionPoseEstimator.update(gyroAngle, modulePositions);
   }
 
+  /** Feeds a vision measurement into the vision-only estimator. Does not affect drive odometry. */
   public void addVisionMeasurement(Pose2d visionPose, double timestampSeconds) {
-    m_poseEstimator.addVisionMeasurement(visionPose, timestampSeconds);
+    m_visionPoseEstimator.addVisionMeasurement(visionPose, timestampSeconds);
   }
 
+  /** Pure wheel-odometry pose — used for driving and PathPlanner. */
   public Pose2d getPose() {
     return m_poseEstimator.getEstimatedPosition();
+  }
+
+  /** Vision-fused pose — used for shooter/turret aiming only. */
+  public Pose2d getVisionPose() {
+    return m_visionPoseEstimator.getEstimatedPosition();
   }
 
   public void resetOdometry(Pose2d pose) {

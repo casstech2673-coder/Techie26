@@ -30,15 +30,17 @@ public final class Constants {
         public static final double kBackRightChassisAngularOffset = Math.PI / 2;
 
         // TODO: Drivetrain CAN IDs
-        public static final int kFrontLeftDrivingCanId = 1;
-        public static final int kRearLeftDrivingCanId = 3;
-        public static final int kFrontRightDrivingCanId = 2;
-        public static final int kRearRightDrivingCanId = 4;
+        // CAN IDs remapped so the physical back of the robot is the new front.
+        // New FL = physical RR, New FR = physical RL, New RL = physical FR, New RR = physical FL.
+        public static final int kFrontLeftDrivingCanId = 4;
+        public static final int kRearLeftDrivingCanId = 2;
+        public static final int kFrontRightDrivingCanId = 3;
+        public static final int kRearRightDrivingCanId = 1;
 
-        public static final int kFrontLeftTurningCanId = 5;
-        public static final int kRearLeftTurningCanId = 7;
-        public static final int kFrontRightTurningCanId = 6;
-        public static final int kRearRightTurningCanId = 8;
+        public static final int kFrontLeftTurningCanId = 8;
+        public static final int kRearLeftTurningCanId = 6;
+        public static final int kFrontRightTurningCanId = 7;
+        public static final int kRearRightTurningCanId = 5;
 
         public static final int kGyroCanId = 9;
         public static final boolean kGyroReversed = false;
