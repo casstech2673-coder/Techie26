@@ -194,7 +194,7 @@ public class SwerveDrive extends SubsystemBase {
   }
 
   public double getHeading() {
-    return Rotation2d.fromDegrees(m_gyro.getYaw().getValueAsDouble()).getDegrees();
+    return m_gyro.getYaw().getValueAsDouble();
   }
 
   public double getTurnRate() {
