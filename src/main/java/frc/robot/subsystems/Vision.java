@@ -33,7 +33,7 @@ public class Vision extends SubsystemBase {
     //   Yaw       :  180°  (camera faces rearward)
     //
     // limelight-4 is fixed to the robot chassis (not turret-mounted).
-    private static final String GLOBAL_LIMELIGHT = "limelight-4";
+    private static final String GLOBAL_LIMELIGHT = "limelight-rear";
 
     public Vision(SwerveDrive swerve) {
         this.m_swerve = swerve;
