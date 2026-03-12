@@ -9,7 +9,6 @@ import edu.wpi.first.math.kinematics.SwerveModulePosition;
 import edu.wpi.first.math.kinematics.SwerveModuleState;
 
 import com.revrobotics.spark.SparkClosedLoopController;
-import com.revrobotics.spark.SparkFlex;
 import com.revrobotics.spark.SparkMax;
 import com.revrobotics.spark.SparkBase.ControlType;
 import com.revrobotics.spark.SparkLowLevel.MotorType;
@@ -17,10 +16,9 @@ import com.revrobotics.AbsoluteEncoder;
 import com.revrobotics.RelativeEncoder;
 import com.revrobotics.PersistMode;
 import com.revrobotics.ResetMode;
-import com.revrobotics.spark.config.SparkFlexConfig;
 
 public class MAXSwerveModule {
-  private final SparkFlex m_drivingSpark; // NEO Vortex
+  private final SparkMax m_drivingSpark;
   private final SparkMax m_turningSpark;
 
   private final RelativeEncoder m_drivingEncoder;
@@ -33,17 +31,12 @@ public class MAXSwerveModule {
   private SwerveModuleState m_desiredState = new SwerveModuleState(0.0, new Rotation2d());
 
   /**
-   * Constructs a MAXSwerveModule and configures the driving and turning motor,
-   * encoder, and PID controller. This configuration is specific to the REV
-   * MAXSwerve Module built with NEOs, SPARKS MAX, and a Through Bore
-   * Encoder.
+   * Constructs a MAXSwerveModule and configures the turning motor, encoder,
+   * and PID controller. Drive motor configuration is managed via REV Hardware
+   * Client and persisted to the controller's flash memory.
    */
   public MAXSwerveModule(int drivingCANId, int turningCANId, double chassisAngularOffset) {
-    this(drivingCANId, turningCANId, chassisAngularOffset, false);
-  }
-
-  public MAXSwerveModule(int drivingCANId, int turningCANId, double chassisAngularOffset, boolean driveInverted) {
-    m_drivingSpark = new SparkFlex(drivingCANId, MotorType.kBrushless);
+    m_drivingSpark = new SparkMax(drivingCANId, MotorType.kBrushless);
     m_turningSpark = new SparkMax(turningCANId, MotorType.kBrushless);
 
     m_drivingEncoder = m_drivingSpark.getEncoder();
@@ -52,16 +45,11 @@ public class MAXSwerveModule {
     m_drivingClosedLoopController = m_drivingSpark.getClosedLoopController();
     m_turningClosedLoopController = m_turningSpark.getClosedLoopController();
 
-    m_drivingSpark.configure(Configs.MAXSwerveModule.drivingConfig, ResetMode.kResetSafeParameters,
-        PersistMode.kPersistParameters);
+    // Apply the respective configurations to the SPARKS. Reset parameters before
+    // applying the configuration to bring the SPARK to a known good state. Persist
+    // the settings to the SPARK to avoid losing them on a power cycle.
     m_turningSpark.configure(Configs.MAXSwerveModule.turningConfig, ResetMode.kResetSafeParameters,
         PersistMode.kPersistParameters);
-
-    if (driveInverted) {
-      SparkFlexConfig invertConfig = new SparkFlexConfig();
-      invertConfig.inverted(true);
-      m_drivingSpark.configure(invertConfig, ResetMode.kNoResetSafeParameters, PersistMode.kNoPersistParameters);
-    }
 
     m_chassisAngularOffset = chassisAngularOffset;
     m_desiredState.angle = new Rotation2d(m_turningEncoder.getPosition());
