@@ -33,7 +33,7 @@ public class SwerveDrive extends SubsystemBase {
   private final MAXSwerveModule m_rearLeft = new MAXSwerveModule(
       DriveConstants.kRearLeftDrivingCanId, DriveConstants.kRearLeftTurningCanId, DriveConstants.kBackLeftChassisAngularOffset);
   private final MAXSwerveModule m_rearRight = new MAXSwerveModule(
-      DriveConstants.kRearRightDrivingCanId, DriveConstants.kRearRightTurningCanId, DriveConstants.kBackRightChassisAngularOffset, true);
+      DriveConstants.kRearRightDrivingCanId, DriveConstants.kRearRightTurningCanId, DriveConstants.kBackRightChassisAngularOffset, false);
   
   private final ProfiledPIDController m_headingController = new ProfiledPIDController(
       DriveConstants.kHeadingP,
