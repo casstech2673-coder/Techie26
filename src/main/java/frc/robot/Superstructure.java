@@ -220,19 +220,18 @@ public class Superstructure extends SubsystemBase {
      */
     public double getDistToHub() {
         boolean isRed = DriverStation.getAlliance().orElse(DriverStation.Alliance.Blue) == DriverStation.Alliance.Red;
-        Translation2d hub = isRed ? 
-            new Translation2d(SuperstructureConstants.kRedHubX, SuperstructureConstants.kRedHubY) : 
+        Translation2d hub = isRed ?
+            new Translation2d(SuperstructureConstants.kRedHubX, SuperstructureConstants.kRedHubY) :
             new Translation2d(SuperstructureConstants.kBlueHubX, SuperstructureConstants.kBlueHubY);
-        
-        return m_swerve.getPose().getTranslation().getDistance(hub);
+
+        // Compute from turret center, not robot center
+        Pose2d pose = m_swerve.getPose();
+        double heading = pose.getRotation().getRadians();
+        Translation2d turret = new Translation2d(
+            pose.getX() - ShooterConstants.kTurretOffsetMeters * Math.cos(heading),
+            pose.getY() - ShooterConstants.kTurretOffsetMeters * Math.sin(heading)
+        );
+        return turret.getDistance(hub);
     }
 
-    /** * Returns distance to the Alliance Wall. 
-     * Used for the Pass/Ferry Interpolation Map.
-     */
-    public double getDistToWall() {
-        boolean isRed = DriverStation.getAlliance().orElse(DriverStation.Alliance.Blue) == DriverStation.Alliance.Red;
-        double wallX = isRed ? SuperstructureConstants.kRedAllianceWallX : SuperstructureConstants.kBlueAllianceWallX;
-        return Math.abs(wallX - m_swerve.getPose().getX());
-    }
 }

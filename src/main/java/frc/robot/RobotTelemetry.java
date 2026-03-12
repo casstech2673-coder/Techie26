@@ -1,6 +1,7 @@
 package frc.robot;
 
 import edu.wpi.first.wpilibj.DriverStation;
+import edu.wpi.first.wpilibj.smartdashboard.Field2d;
 import edu.wpi.first.wpilibj.smartdashboard.SmartDashboard;
 import edu.wpi.first.wpilibj2.command.SubsystemBase;
 import frc.robot.subsystems.Hopper;
@@ -17,11 +18,9 @@ public class RobotTelemetry extends SubsystemBase {
     private final Superstructure m_superStructure;
     private final GameManager m_gameManager;
 
-    // MASTER DEBUG TOGGLE
-    // Set to 'false' during real matches to prevent lag
-    private final boolean kDebugMode = true;
+    private final Field2d m_field = new Field2d();
 
-    public RobotTelemetry(SwerveDrive swerve, Shooter shooter, Intake intake, 
+    public RobotTelemetry(SwerveDrive swerve, Shooter shooter, Intake intake,
                      Hopper hopper, Superstructure superstructure, GameManager gm) {
         this.m_swerve = swerve;
         this.m_shooter = shooter;
@@ -29,6 +28,8 @@ public class RobotTelemetry extends SubsystemBase {
         this.m_hopper = hopper;
         this.m_superStructure = superstructure;
         this.m_gameManager = gm;
+
+        SmartDashboard.putData("Field", m_field);
     }
 
     @Override
@@ -68,20 +69,20 @@ public class RobotTelemetry extends SubsystemBase {
         SmartDashboard.putBoolean("Hopper/IsFeeding",     m_hopper.isFeeding());
 
         // ==========================================================
-        // DEBUG & TUNING (kDebugMode only — set false during matches)
+        // POSE (Always On)
         // ==========================================================
-        if (kDebugMode) {
-            var pose = m_swerve.getPose();
-            SmartDashboard.putNumber("DEBUG/Pose X",       pose.getX());
-            SmartDashboard.putNumber("DEBUG/Pose Y",       pose.getY());
-            SmartDashboard.putNumber("DEBUG/Pose Heading", pose.getRotation().getDegrees());
+        var pose = m_swerve.getPose();
+        m_field.setRobotPose(pose);
+        SmartDashboard.putNumber("Pose/X",       pose.getX());
+        SmartDashboard.putNumber("Pose/Y",       pose.getY());
+        SmartDashboard.putNumber("Pose/Heading", pose.getRotation().getDegrees());
 
-            // Distance math from Superstructure — confirms interpolation inputs are correct
-            SmartDashboard.putNumber("TUNING/Dist to Hub (m)",  m_superStructure.getDistToHub());
-            SmartDashboard.putNumber("TUNING/Dist to Wall (m)", m_superStructure.getDistToWall());
-            SmartDashboard.putNumber("TUNING/Map Target RPS",   m_shooter.getTargetRps());
-            SmartDashboard.putNumber("TUNING/Map Target Hood",  m_shooter.getTargetHood());
-            // TUNING/Current Test RPS and TUNING/Current Test Hood appear here while TuneShooter runs
-        }
+        // ==========================================================
+        // TUNING (Always On)
+        // ==========================================================
+        SmartDashboard.putNumber("Turret/DistToHubM",      m_superStructure.getDistToHub());
+        SmartDashboard.putNumber("TUNING/Map Target RPS",  m_shooter.getTargetRps());
+        SmartDashboard.putNumber("TUNING/Map Target Hood", m_shooter.getTargetHood());
+        // TUNING/Current Test RPS and TUNING/Current Test Hood appear here while TuneShooter runs
     }
 }

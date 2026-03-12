@@ -75,11 +75,12 @@ public class Vision extends SubsystemBase {
      *  2. Grab the resulting pose estimate and inject it into odometry.
      */
     private void updatePoseFromLimelight(String limelightName) {
-        // Supply the robot's current heading so Limelight can compute MegaTag2.
-        // Using the fused pose heading (gyro + wheel odometry) gives Limelight
-        // the most accurate orientation reference we have.
-        double headingDeg = m_swerve.getPose().getRotation().getDegrees();
-        LimelightHelpers.SetRobotOrientation(limelightName, headingDeg, 0, 0, 0, 0, 0);
+        // MegaTag2 requires the raw gyro heading (not odometry-fused pose) so
+        // the Limelight can lock rotation and solve only X/Y. Also supply the
+        // live yaw rate so MegaTag2 can compensate for camera-latency during rotation.
+        double headingDeg = m_swerve.getHeading();
+        double yawRateDegPerSec = m_swerve.getTurnRate();
+        LimelightHelpers.SetRobotOrientation(limelightName, headingDeg, yawRateDegPerSec, 0, 0, 0, 0);
 
         LimelightHelpers.PoseEstimate poseEstimate =
                 LimelightHelpers.getBotPoseEstimate_wpiBlue_MegaTag2(limelightName);

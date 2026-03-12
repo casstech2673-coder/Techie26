@@ -104,7 +104,7 @@ public final class Constants {
         public static final double kFlywheelV = 0.12; // Feedforward (Crucial for Velocity)
 
         // Hood PID (TalonFX, units = motor rotations)
-        public static final double kPositionP = 2.0;
+        public static final double kPositionP = 0.05;
         public static final double kPositionI = 0.0;
         public static final double kPositionD = 0.0;
 
@@ -126,8 +126,8 @@ public final class Constants {
 
         // TODO: Angles (in Degrees) - YOU MUST MEASURE THESE ON THE REAL ROBOT!
         // The REV Through-Bore reads from 0 to 360 degrees.
-        public static final double kStowedAngle = 95.0;
-        public static final double kDeployedAngle = 10.0;
+        // public static final double kStowedAngle = 95.0;
+        // public static final double kDeployedAngle = 10.0;
 
         // Roller Speed
         public static final double kIntakeRollerSpeed = 0.8; // TODO: 80% power
@@ -180,16 +180,15 @@ public final class Constants {
     }
 
     public static final class SuperstructureConstants {
-        // TODO: Field Coordinates for the Hub (double check these)
-        // Hub Coordinates (Aiming at the center of the Hexagon)
-        public static final double kBlueHubX = 8.27; // Center of field roughly
-        public static final double kBlueHubY = 4.10; 
-        
-        public static final double kRedHubX = 8.27;
-        public static final double kRedHubY = 4.10;
+        // Hub field coordinates (global/field-relative, meters)
+        public static final double kBlueHubX = 4.611624;
+        public static final double kBlueHubY = 4.021328;
 
-        // Alliance Wall Coordinates (For Passing/Passing)
+        public static final double kRedHubX  = 11.901424;
+        public static final double kRedHubY  = 4.021328;
+
+        // Alliance wall X coordinates (for passing target)
         public static final double kBlueAllianceWallX = 0.0;
-        public static final double kRedAllianceWallX = 16.54; // Roughly the field length
+        public static final double kRedAllianceWallX  = 16.54;
     }
 }

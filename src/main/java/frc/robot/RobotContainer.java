@@ -216,7 +216,6 @@ public class RobotContainer {
 
             // Flywheel + hood from distance interpolation
             m_shooter.setShooterStateFromDistance(dist, false);
-            SmartDashboard.putNumber("Turret/DistToHubM", dist);
 
             // Turret: hub auto-aim if enabled, otherwise brake-hold current position
             m_turretAutoAim = SmartDashboard.getBoolean("Turret/AutoAim", m_turretAutoAim);
@@ -265,7 +264,7 @@ public class RobotContainer {
         // Hood: right stick Y → open-loop nudge; only moves when stick active
         double hoodInput = MathUtil.applyDeadband(-m_operatorController.getRightY(), 0.1);
         if (hoodInput != 0.0) {
-            m_shooter.setHoodPercent(hoodInput * -0.15);
+            m_shooter.setHoodPercent(hoodInput * -0.3);
         }
 
         // Turret: right stick X overrides to manual; then auto-aim; else brake-hold
@@ -284,7 +283,6 @@ public class RobotContainer {
                     - ShooterConstants.kTurretOffsetMeters * Math.sin(pose.getRotation().getRadians());
             double hubX = isRed ? SuperstructureConstants.kRedHubX : SuperstructureConstants.kBlueHubX;
             double hubY = isRed ? SuperstructureConstants.kRedHubY : SuperstructureConstants.kBlueHubY;
-            SmartDashboard.putNumber("Turret/DistToHubM", Math.hypot(hubX - turretX, hubY - turretY));
             Rotation2d fieldAngle = new Rotation2d(Math.atan2(hubY - turretY, hubX - turretX));
             Rotation2d turretAngle = fieldAngle
                     .minus(pose.getRotation())
@@ -323,9 +321,8 @@ public class RobotContainer {
             m_intake.runPivotManual(0); // release; brake mode holds position
         } else if (m_armMode == ArmMode.JIGGLE) {
             double elapsed = m_jiggleTimer.get() % IntakeConstants.kArmJigglePeriodSec;
-            double target = elapsed < IntakeConstants.kArmJigglePeriodSec / 2
-                    ? IntakeConstants.kArmJiggleRotations : 0.0;
-            m_intake.setPivotPosition(target);
+            double power = elapsed < IntakeConstants.kArmJigglePeriodSec / 2 ? 0.15 : -0.15;
+            m_intake.runPivotManual(power);
         } else { // ZERO
             m_intake.setPivotPosition(0.0);
         }
@@ -382,7 +379,7 @@ public class RobotContainer {
     // RT: Snap hood to 2.0 rotations (testing preset)
     m_operatorController.rightTrigger().onTrue(
         Commands.runOnce(() -> {
-            m_hoodTarget = 2.0;
+            m_hoodTarget = 3.0;
             m_shooter.setHoodPosition(m_hoodTarget);
         })
     );
@@ -416,19 +413,19 @@ public class RobotContainer {
     // Right/Left: ±0.2 rotations hood
     m_operatorController.povRight().onTrue(Commands.runOnce(() -> {
         if (m_passingActive) {
-            m_passHoodRotations += 0.2;
+            m_passHoodRotations += 2;
             SmartDashboard.putNumber("Pass/HoodRotations", m_passHoodRotations);
         } else {
-            m_hoodTarget += 0.2;
+            m_hoodTarget += 2;
             m_shooter.setHoodPosition(m_hoodTarget);
         }
     }));
     m_operatorController.povLeft().onTrue(Commands.runOnce(() -> {
         if (m_passingActive) {
-            m_passHoodRotations -= 0.2;
+            m_passHoodRotations -= 2;
             SmartDashboard.putNumber("Pass/HoodRotations", m_passHoodRotations);
         } else {
-            m_hoodTarget -= 0.2;
+            m_hoodTarget -= 2;
             m_shooter.setHoodPosition(m_hoodTarget);
         }
     }));
