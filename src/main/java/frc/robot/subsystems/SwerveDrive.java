@@ -33,8 +33,8 @@ public class SwerveDrive extends SubsystemBase {
   private final MAXSwerveModule m_rearLeft = new MAXSwerveModule(
       DriveConstants.kRearLeftDrivingCanId, DriveConstants.kRearLeftTurningCanId, DriveConstants.kBackLeftChassisAngularOffset);
   private final MAXSwerveModule m_rearRight = new MAXSwerveModule(
-      DriveConstants.kRearRightDrivingCanId, DriveConstants.kRearRightTurningCanId, DriveConstants.kBackRightChassisAngularOffset, false);
-  
+      DriveConstants.kRearRightDrivingCanId, DriveConstants.kRearRightTurningCanId, DriveConstants.kBackRightChassisAngularOffset);
+
   private final ProfiledPIDController m_headingController = new ProfiledPIDController(
       DriveConstants.kHeadingP,
       DriveConstants.kHeadingI,
@@ -48,7 +48,7 @@ public class SwerveDrive extends SubsystemBase {
 
   SwerveDrivePoseEstimator m_poseEstimator = new SwerveDrivePoseEstimator(
     DriveConstants.kDriveKinematics,
-    Rotation2d.fromDegrees(m_gyro.getYaw().getValueAsDouble()), 
+    Rotation2d.fromDegrees(m_gyro.getYaw().getValueAsDouble()),
     new SwerveModulePosition[] {
         m_frontLeft.getPosition(),
         m_frontRight.getPosition(),
@@ -62,31 +62,33 @@ public class SwerveDrive extends SubsystemBase {
     HAL.report(tResourceType.kResourceType_RobotDrive, tInstances.kRobotDriveSwerve_MaxSwerve);
     m_headingController.enableContinuousInput(-Math.PI, Math.PI);
 
-    // Load the RobotConfig from the PathPlanner GUI settings and configure AutoBuilder.
-    // If the config file is missing (not yet generated via PathPlanner GUI), AutoBuilder
-    // will not be configured and auto routines will be unavailable for this session.
+    // Load the RobotConfig from the GUI settings.
+    RobotConfig config;
     try {
-      RobotConfig config = RobotConfig.fromGUISettings();
-      AutoBuilder.configure(
-          this::getPose,
-          this::resetOdometry,
-          this::getRobotRelativeSpeeds,
-          (speeds, feedforwards) -> driveRobotRelative(speeds),
-          new PPHolonomicDriveController(
-              new PIDConstants(DriveConstants.kAutoDriveP, DriveConstants.kAutoDriveI, DriveConstants.kAutoDriveD),
-              new PIDConstants(DriveConstants.kAutoTurnP, DriveConstants.kAutoTurnI, DriveConstants.kAutoTurnD)
-          ),
-          config,
-          () -> {
-              var alliance = DriverStation.getAlliance();
-              return alliance.isPresent() ? alliance.get() == DriverStation.Alliance.Red : false;
-          },
-          this
-      );
+      config = RobotConfig.fromGUISettings();
     } catch (Exception e) {
-      DriverStation.reportError("PathPlanner AutoBuilder config failed: " + e.getMessage()
-          + " — Open PathPlanner GUI, configure the robot, and redeploy.", true);
+      e.printStackTrace();
+      return;
     }
+
+    // Configure PathPlanner AutoBuilder
+    AutoBuilder.configure(
+        this::getPose,
+        this::resetOdometry,
+        this::getRobotRelativeSpeeds,
+        (speeds, feedforwards) -> driveRobotRelative(speeds),
+        new PPHolonomicDriveController(
+            // NOTE: You must add kAutoDriveP, I, D and kAutoTurnP, I, D to your Constants!
+            new PIDConstants(DriveConstants.kAutoDriveP, DriveConstants.kAutoDriveI, DriveConstants.kAutoDriveD),
+            new PIDConstants(DriveConstants.kAutoTurnP, DriveConstants.kAutoTurnI, DriveConstants.kAutoTurnD)
+        ),
+        config,
+        () -> {
+            var alliance = DriverStation.getAlliance();
+            return alliance.isPresent() ? alliance.get() == DriverStation.Alliance.Red : false;
+        },
+        this
+    );
   }
 
   @Override
@@ -129,7 +131,7 @@ public class SwerveDrive extends SubsystemBase {
   public void driveRobotRelative(ChassisSpeeds speeds) {
     SwerveModuleState[] swerveModuleStates = DriveConstants.kDriveKinematics.toSwerveModuleStates(speeds);
     SwerveDriveKinematics.desaturateWheelSpeeds(swerveModuleStates, DriveConstants.kMaxSpeedMetersPerSecond);
-    
+
     m_frontLeft.setDesiredState(swerveModuleStates[0]);
     m_frontRight.setDesiredState(swerveModuleStates[1]);
     m_rearLeft.setDesiredState(swerveModuleStates[2]);
@@ -146,9 +148,9 @@ public class SwerveDrive extends SubsystemBase {
             // CLEANUP: Use the Pose Estimator rotation so vision corrections apply to your driving!
             ? ChassisSpeeds.fromFieldRelativeSpeeds(xSpeedDelivered, ySpeedDelivered, rotDelivered, getPose().getRotation())
             : new ChassisSpeeds(xSpeedDelivered, ySpeedDelivered, rotDelivered));
-            
+
     SwerveDriveKinematics.desaturateWheelSpeeds(swerveModuleStates, DriveConstants.kMaxSpeedMetersPerSecond);
-    
+
     m_frontLeft.setDesiredState(swerveModuleStates[0]);
     m_frontRight.setDesiredState(swerveModuleStates[1]);
     m_rearLeft.setDesiredState(swerveModuleStates[2]);
@@ -194,7 +196,7 @@ public class SwerveDrive extends SubsystemBase {
   }
 
   public double getHeading() {
-    return m_gyro.getYaw().getValueAsDouble();
+    return Rotation2d.fromDegrees(m_gyro.getYaw().getValueAsDouble()).getDegrees();
   }
 
   public double getTurnRate() {
