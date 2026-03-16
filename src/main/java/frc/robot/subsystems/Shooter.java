@@ -9,7 +9,6 @@ import com.ctre.phoenix6.controls.VelocityVoltage;
 import com.ctre.phoenix6.hardware.TalonFX;
 import com.ctre.phoenix6.signals.InvertedValue;
 import com.ctre.phoenix6.signals.NeutralModeValue;
-
 // REV Imports (For the Turret — open-loop only, no closed-loop controller needed)
 import com.revrobotics.RelativeEncoder;
 import com.revrobotics.spark.SparkBase.PersistMode;
@@ -113,7 +112,7 @@ public class Shooter extends SubsystemBase {
         hoodConfig.Slot0.kD = ShooterConstants.kPositionD;
         hoodConfig.CurrentLimits.StatorCurrentLimit = 40;
         hoodConfig.CurrentLimits.StatorCurrentLimitEnable = true;
-        hoodConfig.MotorOutput.Inverted = InvertedValue.Clockwise_Positive; // TODO: verify on real robot
+        hoodConfig.MotorOutput.Inverted = InvertedValue.CounterClockwise_Positive; // TODO: verify on real robot
         m_hoodMotor.getConfigurator().apply(hoodConfig);
         m_hoodMotor.setNeutralMode(NeutralModeValue.Brake);
     }

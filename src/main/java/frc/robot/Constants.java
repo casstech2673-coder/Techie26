@@ -13,9 +13,9 @@ public final class Constants {
         public static final double kMaxAngularSpeed = 2 * Math.PI; // radians per second
 
         // Chassis configuration
-        public static final double kTrackWidth = Units.inchesToMeters(22);
+        public static final double kTrackWidth = Units.inchesToMeters(26.5);
         // Distance between centers of right and left wheels on robot
-        public static final double kWheelBase = Units.inchesToMeters(26);
+        public static final double kWheelBase = Units.inchesToMeters(26.5);
         // Distance between front and back wheels on robot
         public static final SwerveDriveKinematics kDriveKinematics = new SwerveDriveKinematics(
             new Translation2d(kWheelBase / 2, kTrackWidth / 2),
@@ -30,17 +30,16 @@ public final class Constants {
         public static final double kBackRightChassisAngularOffset = Math.PI / 2;
 
         // TODO: Drivetrain CAN IDs
-        // CAN IDs remapped so the physical back of the robot is the new front.
-        // New FL = physical RR, New FR = physical RL, New RL = physical FR, New RR = physical FL.
-        public static final int kFrontLeftDrivingCanId = 4;
-        public static final int kRearLeftDrivingCanId = 2;
-        public static final int kFrontRightDrivingCanId = 3;
-        public static final int kRearRightDrivingCanId = 1;
+        public static final int kFrontLeftDrivingCanId = 2;
+        public static final int kRearLeftDrivingCanId = 4;
+        public static final int kFrontRightDrivingCanId = 1;
+        public static final int kRearRightDrivingCanId = 3;
 
-        public static final int kFrontLeftTurningCanId = 8;
-        public static final int kRearLeftTurningCanId = 6;
-        public static final int kFrontRightTurningCanId = 7;
-        public static final int kRearRightTurningCanId = 5;
+        public static final int kFrontLeftTurningCanId = 6;
+        public static final int kRearLeftTurningCanId = 8;
+        public static final int kFrontRightTurningCanId = 5;
+        public static final int kRearRightTurningCanId = 7;
+
 
         public static final int kGyroCanId = 9;
         public static final boolean kGyroReversed = false;
@@ -71,7 +70,7 @@ public final class Constants {
         // 13T, or 14T. This changes the drive speed of the module (a pinion gear with
         // more teeth will result in a robot that drives faster).
         public static final int kDrivingMotorPinionTeeth = 14;
-        public static final double kFreeSpeedRpm = 6784; // NEO Vortex free speed (RPM)
+        public static final double kFreeSpeedRpm = 5676;
 
         // Calculations required for driving motor conversion factors and feed forward
         public static final double kDrivingMotorFreeSpeedRps = kFreeSpeedRpm / 60;
@@ -145,7 +144,7 @@ public final class Constants {
 
         // Jiggle mode: arm oscillates between 0 and kArmJiggleRotations
         public static final double kArmJiggleRotations  = 0.3;  // TODO: tune
-        public static final double kArmJigglePeriodSec  = 0.6;  // 0.3 s up, 0.3 s down
+        public static final double kArmJigglePeriodSec  = 0.2;  // 0.3 s up, 0.3 s down
     }
 
     public static final class HopperConstants {
@@ -153,8 +152,8 @@ public final class Constants {
         
         // Speed to feed the game piece into the shooter flywheels.
         // TODO: You want this fast enough to not lose momentum, but not so fast that it skips on the ball.
-        public static final double kFeedSpeed = 1.0; // 80% power
-        public static final double kCreepSpeed = -0.90;       // 5% — slow/test mode
+        public static final double kFeedSpeed = 0.8; // 80% power
+        public static final double kCreepSpeed = -0.8;       // 5% — slow/test mode
     }
 
     public static final class VisionConstants {

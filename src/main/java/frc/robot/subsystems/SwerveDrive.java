@@ -34,7 +34,7 @@ public class SwerveDrive extends SubsystemBase {
       DriveConstants.kRearLeftDrivingCanId, DriveConstants.kRearLeftTurningCanId, DriveConstants.kBackLeftChassisAngularOffset);
   private final MAXSwerveModule m_rearRight = new MAXSwerveModule(
       DriveConstants.kRearRightDrivingCanId, DriveConstants.kRearRightTurningCanId, DriveConstants.kBackRightChassisAngularOffset);
-
+  
   private final ProfiledPIDController m_headingController = new ProfiledPIDController(
       DriveConstants.kHeadingP,
       DriveConstants.kHeadingI,
@@ -46,32 +46,16 @@ public class SwerveDrive extends SubsystemBase {
   // The gyro sensor
   private final Pigeon2 m_gyro = new Pigeon2(DriveConstants.kGyroCanId);
 
-  // Pure wheel-odometry estimator — drives field-relative and PathPlanner.
-  // Vision measurements are intentionally excluded to keep driving stable.
   SwerveDrivePoseEstimator m_poseEstimator = new SwerveDrivePoseEstimator(
     DriveConstants.kDriveKinematics,
-    Rotation2d.fromDegrees(m_gyro.getYaw().getValueAsDouble()),
+    Rotation2d.fromDegrees(m_gyro.getYaw().getValueAsDouble()), 
     new SwerveModulePosition[] {
         m_frontLeft.getPosition(),
         m_frontRight.getPosition(),
         m_rearLeft.getPosition(),
         m_rearRight.getPosition()
     },
-    new Pose2d()
-  );
-
-  // Vision-fused estimator — used only for shooter/turret aiming.
-  // Receives the same wheel odometry updates AND vision measurements.
-  private final SwerveDrivePoseEstimator m_visionPoseEstimator = new SwerveDrivePoseEstimator(
-    DriveConstants.kDriveKinematics,
-    Rotation2d.fromDegrees(m_gyro.getYaw().getValueAsDouble()),
-    new SwerveModulePosition[] {
-        m_frontLeft.getPosition(),
-        m_frontRight.getPosition(),
-        m_rearLeft.getPosition(),
-        m_rearRight.getPosition()
-    },
-    new Pose2d()
+    new Pose2d() // Initial pose
   );
 
   public SwerveDrive() {
@@ -84,21 +68,21 @@ public class SwerveDrive extends SubsystemBase {
       config = RobotConfig.fromGUISettings();
     } catch (Exception e) {
       e.printStackTrace();
-      return;
+      return; 
     }
 
     // Configure PathPlanner AutoBuilder
     AutoBuilder.configure(
-        this::getPose,
-        this::resetOdometry,
-        this::getRobotRelativeSpeeds,
-        (speeds, feedforwards) -> driveRobotRelative(speeds),
+        this::getPose, 
+        this::resetOdometry, 
+        this::getRobotRelativeSpeeds, 
+        (speeds, feedforwards) -> driveRobotRelative(speeds), 
         new PPHolonomicDriveController(
             // NOTE: You must add kAutoDriveP, I, D and kAutoTurnP, I, D to your Constants!
-            new PIDConstants(DriveConstants.kAutoDriveP, DriveConstants.kAutoDriveI, DriveConstants.kAutoDriveD),
-            new PIDConstants(DriveConstants.kAutoTurnP, DriveConstants.kAutoTurnI, DriveConstants.kAutoTurnD)
+            new PIDConstants(DriveConstants.kAutoDriveP, DriveConstants.kAutoDriveI, DriveConstants.kAutoDriveD), 
+            new PIDConstants(DriveConstants.kAutoTurnP, DriveConstants.kAutoTurnI, DriveConstants.kAutoTurnD)  
         ),
-        config,
+        config, 
         () -> {
             var alliance = DriverStation.getAlliance();
             return alliance.isPresent() ? alliance.get() == DriverStation.Alliance.Red : false;
@@ -109,30 +93,22 @@ public class SwerveDrive extends SubsystemBase {
 
   @Override
   public void periodic() {
-    var gyroAngle = Rotation2d.fromDegrees(m_gyro.getYaw().getValueAsDouble());
-    var modulePositions = new SwerveModulePosition[] {
-        m_frontLeft.getPosition(),
-        m_frontRight.getPosition(),
-        m_rearLeft.getPosition(),
-        m_rearRight.getPosition()
-    };
-    m_poseEstimator.update(gyroAngle, modulePositions);
-    m_visionPoseEstimator.update(gyroAngle, modulePositions);
+    m_poseEstimator.update(
+        Rotation2d.fromDegrees(m_gyro.getYaw().getValueAsDouble()),
+        new SwerveModulePosition[] {
+            m_frontLeft.getPosition(),
+            m_frontRight.getPosition(),
+            m_rearLeft.getPosition(),
+            m_rearRight.getPosition()
+        });
   }
 
-  /** Feeds a vision measurement into the vision-only estimator. Does not affect drive odometry. */
   public void addVisionMeasurement(Pose2d visionPose, double timestampSeconds) {
-    m_visionPoseEstimator.addVisionMeasurement(visionPose, timestampSeconds);
+    m_poseEstimator.addVisionMeasurement(visionPose, timestampSeconds);
   }
 
-  /** Pure wheel-odometry pose — used for driving and PathPlanner. */
   public Pose2d getPose() {
     return m_poseEstimator.getEstimatedPosition();
-  }
-
-  /** Vision-fused pose — used for shooter/turret aiming only. */
-  public Pose2d getVisionPose() {
-    return m_visionPoseEstimator.getEstimatedPosition();
   }
 
   public void resetOdometry(Pose2d pose) {
@@ -155,7 +131,7 @@ public class SwerveDrive extends SubsystemBase {
   public void driveRobotRelative(ChassisSpeeds speeds) {
     SwerveModuleState[] swerveModuleStates = DriveConstants.kDriveKinematics.toSwerveModuleStates(speeds);
     SwerveDriveKinematics.desaturateWheelSpeeds(swerveModuleStates, DriveConstants.kMaxSpeedMetersPerSecond);
-
+    
     m_frontLeft.setDesiredState(swerveModuleStates[0]);
     m_frontRight.setDesiredState(swerveModuleStates[1]);
     m_rearLeft.setDesiredState(swerveModuleStates[2]);
@@ -172,9 +148,9 @@ public class SwerveDrive extends SubsystemBase {
             // CLEANUP: Use the Pose Estimator rotation so vision corrections apply to your driving!
             ? ChassisSpeeds.fromFieldRelativeSpeeds(xSpeedDelivered, ySpeedDelivered, rotDelivered, getPose().getRotation())
             : new ChassisSpeeds(xSpeedDelivered, ySpeedDelivered, rotDelivered));
-
+            
     SwerveDriveKinematics.desaturateWheelSpeeds(swerveModuleStates, DriveConstants.kMaxSpeedMetersPerSecond);
-
+    
     m_frontLeft.setDesiredState(swerveModuleStates[0]);
     m_frontRight.setDesiredState(swerveModuleStates[1]);
     m_rearLeft.setDesiredState(swerveModuleStates[2]);

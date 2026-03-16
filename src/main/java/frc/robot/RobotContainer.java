@@ -10,6 +10,7 @@ import edu.wpi.first.wpilibj.smartdashboard.SendableChooser;
 import edu.wpi.first.wpilibj.smartdashboard.SmartDashboard;
 import edu.wpi.first.wpilibj2.command.Command;
 import edu.wpi.first.wpilibj2.command.Commands;
+import edu.wpi.first.wpilibj2.command.InstantCommand;
 import edu.wpi.first.wpilibj2.command.button.CommandXboxController;
 import frc.robot.Constants.IntakeConstants;
 import frc.robot.Constants.ShooterConstants;
@@ -42,13 +43,14 @@ public class RobotContainer {
   private final SendableChooser<Command> autoChooser;
 
   // --- Adjustable setpoints (D-pad to tune) ---
-  private double m_flywheelTarget    = -10.0; // RPS (negative = forward)
+  private double m_flywheelTarget    = -80.0; // RPS (negative = forward)
   private double m_hoodTarget        = 0.0;   // motor rotations from home
   private double m_passFlywheelRps   = 30.0;  // TODO: tune on real robot
   private double m_passHoodRotations = 1.5;   // TODO: tune on real robot
 
   // Turret auto-aim: false = manual right-stick, true = hub tracking
   private boolean m_turretAutoAim = false;
+  private double m_driveBackStartX = 0.0;
 
   // --- Arm mode state machine (driver Start cycles) ---
   private enum ArmMode { ZERO, JIGGLE, MANUAL }
@@ -63,9 +65,9 @@ public class RobotContainer {
     m_swerve.setDefaultCommand(
         new TeleopDrive(
             m_swerve,
-            () -> m_driverController.getLeftY(),
-            () -> m_driverController.getLeftX(),
-            () -> m_driverController.getRightX(),
+            () -> m_driverController.getLeftY(),  
+            () -> m_driverController.getLeftX(),  
+            () -> m_driverController.getRightX(), 
             () -> true,
             () -> m_driverController.a().getAsBoolean(), // A: snap 0°
             () -> m_driverController.b().getAsBoolean(), // B: snap -90°
@@ -82,6 +84,27 @@ public class RobotContainer {
           "AutoBuilder not configured — auto routines unavailable. "
           + "Open PathPlanner GUI, configure the robot, and redeploy.", false);
     }
+  autoChooser.addOption("Drive Back Then Shoot",
+        Commands.sequence(
+            // Step 1: Record start position, then drive backwards 2 m field-oriented
+            Commands.runOnce(() -> m_driveBackStartX = m_swerve.getPose().getX()),
+            Commands.run(() -> m_swerve.drive(-0.4, 0, 0, true), m_swerve)
+                .until(() -> Math.abs(m_swerve.getPose().getX() - m_driveBackStartX) >= 2.0)
+                .finallyDo(() -> m_swerve.drive(0, 0, 0, true)),
+            // Step 2: Shoot
+            Commands.parallel(
+                Commands.run(() -> m_shooter.setFlywheelVelocity(-34.0), m_shooter),
+                Commands.sequence(
+                    Commands.waitSeconds(0.5),
+                    Commands.run(() -> m_hopper.runSlow(), m_hopper)
+                )
+            ).withTimeout(10.0)
+             .finallyDo(() -> {
+                 m_shooter.stopFlywheels();
+                 m_hopper.stop();
+             })
+        )
+    );
     SmartDashboard.putData("Select Auto", autoChooser);
 
     // Initial SmartDashboard values
@@ -116,24 +139,17 @@ public class RobotContainer {
     // ==========================================================
 
     // Back: zero gyro heading
-    m_driverController.back().onTrue(Commands.runOnce(() -> m_swerve.zeroHeading()));
+    m_driverController.y().onTrue(new InstantCommand(() -> m_swerve.zeroHeading()));
 
     // Start: cycle arm mode
     //   MANUAL → ZERO      (re-engage auto-hold-zero after manual override)
     //   ZERO   → JIGGLE    (start oscillating to help balls settle)
     //   JIGGLE → ZERO      (stop jiggling, return to zero)
     m_driverController.start().onTrue(Commands.runOnce(() -> {
-        if (m_armMode == ArmMode.MANUAL) {
-            m_armMode = ArmMode.ZERO;
-            m_jiggleTimer.stop();
-        } else if (m_armMode == ArmMode.ZERO) {
             m_armMode = ArmMode.JIGGLE;
             m_jiggleTimer.reset();
             m_jiggleTimer.start();
-        } else { // JIGGLE → ZERO
-            m_armMode = ArmMode.ZERO;
-            m_jiggleTimer.stop();
-        }
+       
     }));
 
     // LB: intake rollers only (arm default command keeps running concurrently)
@@ -244,6 +260,7 @@ public class RobotContainer {
         })
     );
 
+
     // ==========================================================
     // SHOOTER DEFAULT COMMAND
     // Runs when no driver game command is holding RT/RB/LT.
@@ -312,6 +329,16 @@ public class RobotContainer {
     // JIGGLE : oscillates 0 ↔ kArmJiggleRotations on kArmJigglePeriodSec cycle
     // MANUAL : open-loop; releases when stick returns to center
     // ==========================================================
+    m_operatorController.leftTrigger(0.2).whileTrue(
+         Commands.run(() -> {
+            double elapsed = m_jiggleTimer.get() % IntakeConstants.kArmJigglePeriodSec;
+            double power = elapsed < IntakeConstants.kArmJigglePeriodSec / 2 ? -0.3 : -0.3;
+            m_intake.runPivotManual(power);
+        }, m_intake)
+        .beforeStarting(() -> { m_jiggleTimer.reset(); m_jiggleTimer.start(); })
+        .finallyDo(() -> { m_jiggleTimer.stop(); m_intake.runPivotManual(0); })
+
+    );
     m_intake.setDefaultCommand(Commands.run(() -> {
         double pivotInput = MathUtil.applyDeadband(m_operatorController.getLeftY(), 0.1);
         if (pivotInput != 0.0) {
@@ -324,7 +351,7 @@ public class RobotContainer {
             double power = elapsed < IntakeConstants.kArmJigglePeriodSec / 2 ? 0.15 : -0.15;
             m_intake.runPivotManual(power);
         } else { // ZERO
-            m_intake.setPivotPosition(0.0);
+            m_intake.runPivotManual(0.0);
         }
     }, m_intake));
 
@@ -333,7 +360,7 @@ public class RobotContainer {
     // ==========================================================
 
     // Left stick button: toggle turret auto-aim on/off
-    m_operatorController.leftStick().onTrue(Commands.runOnce(() -> {
+    m_operatorController.back().onTrue(Commands.runOnce(() -> {
         m_turretAutoAim = !m_turretAutoAim;
         SmartDashboard.putBoolean("Turret/AutoAim", m_turretAutoAim);
     }));
@@ -351,20 +378,31 @@ public class RobotContainer {
 
     // LB: Zero arm encoder at current position (use when arm is physically at stowed position)
     m_operatorController.leftBumper().onTrue(
-        Commands.runOnce(() -> m_intake.zeroPivotEncoder())
+        Commands.run(() -> m_intake.runPivotManual(-0.2), m_intake)
+            .until(() -> m_intake.getPivotCurrent() >
+                SmartDashboard.getNumber("Intake/ArmHomingCurrentThreshold", 20.0))
+            .finallyDo(() -> {
+                m_intake.runPivotManual(0);
+                m_intake.zeroPivotEncoder();
+            })
     );
 
     // Y (hold): Run hopper + flywheels + intake together slowly (feed-sequence test)
-    m_operatorController.y().whileTrue(
-        Commands.run(() -> {
-            m_shooter.setFlywheelVelocity(-30.0);
-            m_hopper.runSlow();
-            m_intake.runRollersSlow();
-        }, m_shooter, m_hopper, m_intake)
+   m_operatorController.y().whileTrue(
+        Commands.parallel(
+            Commands.run(() -> {
+                m_shooter.setFlywheelVelocity(-36.0);
+            
+            }, m_shooter),
+            Commands.sequence(
+                Commands.waitSeconds(0.5),
+                Commands.run(() -> m_hopper.runSlow(), m_hopper)
+            )
+        )
         .finallyDo(() -> {
             m_shooter.stopFlywheels();
             m_hopper.stop();
-            m_intake.stopRollers();
+           
         })
     );
 

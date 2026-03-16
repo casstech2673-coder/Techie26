@@ -23,7 +23,7 @@ public class Intake extends SubsystemBase {
     private final SparkClosedLoopController m_pivotController;
 
     // Live-tuning state
-    private double m_manualSpeedLimit = 0.15;
+    private double m_manualSpeedLimit = 0.3;
     private double m_lastPivotP = IntakeConstants.kPivotP;
     private double m_lastPivotI = IntakeConstants.kPivotI;
     private double m_lastPivotD = IntakeConstants.kPivotD;
@@ -114,6 +114,7 @@ public class Intake extends SubsystemBase {
 
     public double getPivotPosition() { return m_pivotEncoder.getPosition(); }
     public double getPivotOutput()   { return m_pivotMotor.getAppliedOutput(); }
+    public double getPivotCurrent()  { return m_pivotMotor.getOutputCurrent(); }
 
     // ==========================================================
     // INTAKE COMMAND METHODS

@@ -31,9 +31,10 @@ public class MAXSwerveModule {
   private SwerveModuleState m_desiredState = new SwerveModuleState(0.0, new Rotation2d());
 
   /**
-   * Constructs a MAXSwerveModule and configures the turning motor, encoder,
-   * and PID controller. Drive motor configuration is managed via REV Hardware
-   * Client and persisted to the controller's flash memory.
+   * Constructs a MAXSwerveModule and configures the driving and turning motor,
+   * encoder, and PID controller. This configuration is specific to the REV
+   * MAXSwerve Module built with NEOs, SPARKS MAX, and a Through Bore
+   * Encoder.
    */
   public MAXSwerveModule(int drivingCANId, int turningCANId, double chassisAngularOffset) {
     m_drivingSpark = new SparkMax(drivingCANId, MotorType.kBrushless);
