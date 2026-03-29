@@ -68,7 +68,7 @@ public class RobotContainer {
             () -> m_driverController.getLeftY(),  
             () -> m_driverController.getLeftX(),  
             () -> m_driverController.getRightX(), 
-            () -> true,
+            () -> false,
             () -> m_driverController.a().getAsBoolean(), // A: snap 0°
             () -> m_driverController.b().getAsBoolean(), // B: snap -90°
             () -> m_driverController.x().getAsBoolean(), // X: snap 90°

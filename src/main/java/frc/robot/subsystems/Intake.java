@@ -65,7 +65,7 @@ public class Intake extends SubsystemBase {
         // ROLLER MOTOR CONFIGURATION
         // ==========================================================
         SparkMaxConfig rollerConfig = new SparkMaxConfig();
-        rollerConfig.inverted(false);
+        rollerConfig.inverted(true);
         rollerConfig.smartCurrentLimit(40);
         m_rollerMotor.configure(rollerConfig,
             com.revrobotics.ResetMode.kResetSafeParameters,
