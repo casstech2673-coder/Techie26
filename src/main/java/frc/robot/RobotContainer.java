@@ -35,24 +35,27 @@ public class RobotContainer {
 
   // ==========================================================
   // CONTROLLERS
-  // ==========================================================
+  // 
   private final CommandXboxController m_driverController   = new CommandXboxController(0);
   private final CommandXboxController m_operatorController = new CommandXboxController(1);
-
+  // Telementary
+  private final GameManager    m_gameManager    = new GameManager(m_driverController, m_operatorController);
+  private final Superstructure m_superStructure = new Superstructure(m_swerve, m_intake, m_hopper, m_shooter, m_gameManager);
+  private final RobotTelemetry m_telemetry      = new RobotTelemetry(m_swerve, m_shooter, m_intake, m_hopper, m_superStructure, m_gameManager);
   // Autonomous chooser
   private final SendableChooser<Command> autoChooser;
 
   // --- Adjustable setpoints (D-pad to tune) ---
-  private double m_flywheelTarget    = -80.0; // RPS (negative = forward)
+  private double m_flywheelTarget    = -30.0; // RPS (negative = forward)
   private double m_hoodTarget        = 0.0;   // motor rotations from home
-  private double m_passFlywheelRps   = 30.0;  // TODO: tune on real robot
-  private double m_passHoodRotations = 1.5;   // TODO: tune on real robot
+  private double m_passFlywheelRps   = -40.0;  // TODO: tune on real robot
+  private double m_passHoodRotations =0;   // TODO: tune on real robot
 
   // Turret auto-aim: false = manual right-stick, true = hub tracking
   private boolean m_turretAutoAim = false;
   private double m_driveBackStartX = 0.0;
 
-  // --- Arm mode state machine (driver Start cycles) ---
+  // --- Arm mode stateF machine (driver Start cycles) ---
   private enum ArmMode { ZERO, JIGGLE, MANUAL }
   private ArmMode m_armMode   = ArmMode.ZERO;
   private final Timer m_jiggleTimer = new Timer();
@@ -68,7 +71,7 @@ public class RobotContainer {
             () -> m_driverController.getLeftY(),  
             () -> m_driverController.getLeftX(),  
             () -> m_driverController.getRightX(), 
-            () -> false,
+            () -> true,
             () -> m_driverController.a().getAsBoolean(), // A: snap 0°
             () -> m_driverController.b().getAsBoolean(), // B: snap -90°
             () -> m_driverController.x().getAsBoolean(), // X: snap 90°
@@ -145,7 +148,7 @@ public class RobotContainer {
     //   MANUAL → ZERO      (re-engage auto-hold-zero after manual override)
     //   ZERO   → JIGGLE    (start oscillating to help balls settle)
     //   JIGGLE → ZERO      (stop jiggling, return to zero)
-    m_driverController.start().onTrue(Commands.runOnce(() -> {
+    m_operatorController.start().onTrue(Commands.runOnce(() -> {
             m_armMode = ArmMode.JIGGLE;
             m_jiggleTimer.reset();
             m_jiggleTimer.start();
@@ -197,13 +200,10 @@ public class RobotContainer {
             m_shooter.setTurretTargetDeg(turretPassAngle.getDegrees() + 180.0);
 
             m_shooter.setFlywheelVelocity(m_passFlywheelRps);
-            m_shooter.setHoodPosition(m_passHoodRotations);
+            //m_shooter.setHoodPosition(m_passHoodRotations);
             m_intake.runRollers();
-            if (m_shooter.isReadyToFire()) {
-                m_hopper.startFeedSequence();
-            } else {
-                m_hopper.stop();
-            }
+            m_hopper.startFeedSequence();
+    
         }, m_shooter, m_hopper)
         .finallyDo(() -> {
             m_passingActive = false;
@@ -360,7 +360,7 @@ public class RobotContainer {
     // ==========================================================
 
     // Left stick button: toggle turret auto-aim on/off
-    m_operatorController.back().onTrue(Commands.runOnce(() -> {
+    m_operatorController.start().onTrue(Commands.runOnce(() -> {
         m_turretAutoAim = !m_turretAutoAim;
         SmartDashboard.putBoolean("Turret/AutoAim", m_turretAutoAim);
     }));
@@ -391,7 +391,7 @@ public class RobotContainer {
    m_operatorController.y().whileTrue(
         Commands.parallel(
             Commands.run(() -> {
-                m_shooter.setFlywheelVelocity(-36.0);
+                m_shooter.setFlywheelVelocity(m_flywheelTarget);
             
             }, m_shooter),
             Commands.sequence(
@@ -431,19 +431,19 @@ public class RobotContainer {
     // Up/Down: ±1 RPS flywheel
     m_operatorController.povUp().onTrue(Commands.runOnce(() -> {
         if (m_passingActive) {
-            m_passFlywheelRps += 1.0;
+            m_passFlywheelRps += 0.25;
             SmartDashboard.putNumber("Pass/FlywheelRps", m_passFlywheelRps);
         } else {
-            m_flywheelTarget -= 1.0; // more negative = faster
+            m_flywheelTarget -= 0.25; // more negative = faster
             SmartDashboard.putNumber("Shooter/SpeedSetpoint", m_flywheelTarget);
         }
     }));
     m_operatorController.povDown().onTrue(Commands.runOnce(() -> {
         if (m_passingActive) {
-            m_passFlywheelRps -= 1.0;
+            m_passFlywheelRps -= 0.25;
             SmartDashboard.putNumber("Pass/FlywheelRps", m_passFlywheelRps);
         } else {
-            m_flywheelTarget += 1.0; // less negative = slower
+            m_flywheelTarget += 0.25; // less negative = slower
             SmartDashboard.putNumber("Shooter/SpeedSetpoint", m_flywheelTarget);
         }
     }));

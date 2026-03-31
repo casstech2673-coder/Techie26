@@ -42,7 +42,7 @@ public final class Constants {
 
 
         public static final int kGyroCanId = 9;
-        public static final boolean kGyroReversed = false;
+        public static final boolean kGyroReversed = true;
 
         // TODO: Heading Lock PID Constants (You will need to tune the P value)
         public static final double kHeadingP = 5.0; 
@@ -95,8 +95,8 @@ public final class Constants {
         // Turret home (encoder = 0) points BACKWARD (180° robot-relative).
         // Limits = 90° to 270°, i.e. ±90° from the home position.
         // Zero the encoder with the turret physically pointing backward before enabling.
-        public static final double kTurretMaxRotations = kTurretMotorRotationsPerTurretRevolution * (90.0 / 360.0); // ~10.42
-        public static final double kTurretMinRotations = -kTurretMotorRotationsPerTurretRevolution * (90.0 / 360.0); // ~-10.42
+        public static final double kTurretMaxRotations = kTurretMotorRotationsPerTurretRevolution * (45.0 / 360.0); // ~10.42
+        public static final double kTurretMinRotations = -kTurretMotorRotationsPerTurretRevolution * (45.0 / 360.0); // ~-10.42
 
         // TODO: PID GAINS
         public static final double kFlywheelP = 0.5;
@@ -117,7 +117,7 @@ public final class Constants {
         // Turret is "on target" when the physical angle is within this many degrees of the setpoint.
         public static final double kTurretToleranceDeg = 3.0; // degrees
         public static final double kHoodToleranceRotations = 0.2;
-        public static final double kFlywheelToleranceRPS = 2.0; // Rotations Per Second
+        public static final double kFlywheelToleranceRPS = 0.25; // Rotations Per Second
     }
 
     public static final class IntakeConstants {
@@ -132,7 +132,7 @@ public final class Constants {
 
         // Roller Speed
         public static final double kIntakeRollerSpeed = 0.8; // TODO: 80% power
-        public static final double kCreepSpeed = 0.8;       // 5% — slow/test mode
+        public static final double kCreepSpeed = 1.0;       // 5% — slow/test mode
         // TODO: Pivot PID Gains (Needs tuning)
         public static final double kPivotP = 0.05;
         public static final double kPivotI = 0.0;
@@ -152,7 +152,7 @@ public final class Constants {
         
         // Speed to feed the game piece into the shooter flywheels.
         // TODO: You want this fast enough to not lose momentum, but not so fast that it skips on the ball.
-        public static final double kFeedSpeed = 0.8; // 80% power
+        public static final double kFeedSpeed = -0.8; // 80% power
         public static final double kCreepSpeed = -0.8;       // 5% — slow/test mode
     }
 
