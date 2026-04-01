@@ -52,50 +52,8 @@ public class Superstructure extends SubsystemBase {
 
     @Override
     public void periodic() {
-        switch (m_currentState) {
-            case STOWED:
-                m_intake.setPivotPosition(IntakeConstants.kArmStowedRotations);
-                m_intake.stopRollers();
-                m_hopper.stop();
-                m_shooter.stopShooter();
-                break;
-
-            case IDLE:
-                m_intake.setPivotPosition(IntakeConstants.kArmDeployedRotations);
-                m_intake.stopRollers();
-                m_hopper.stop();
-                m_shooter.setFlywheelVelocity(10.0); // Keep shooter idle
-                break;
-
-            case COLLECTING:
-                m_intake.setPivotPosition(IntakeConstants.kArmDeployedRotations);
-                m_intake.runRollers();
-                m_hopper.stop();
-                m_shooter.setFlywheelVelocity(10.0);
-                break;
-
-            case VACUUM:
-                m_intake.setPivotPosition(IntakeConstants.kArmDeployedRotations);
-                m_intake.runRollers();
-                m_hopper.startFeedSequence();
-                handleShooterAiming();
-                break;
-
-            case FIRING:
-                m_intake.setPivotPosition(IntakeConstants.kArmDeployedRotations);
-                m_intake.runRollers();
-                m_hopper.startFeedSequence(); // Slam it forward into flywheels
-                handleShooterAiming();
-                break;
-
-            case CREEP:
-                // Pivot is controlled manually via left joystick — does NOT auto-position
-                m_intake.runPivotManual(m_manualPivotInput);
-                m_intake.runRollersSlow();
-                m_hopper.runSlow();
-                m_shooter.setFlywheelVelocity(5.0); // ~5 RPS, just enough to verify spin
-                break;
-        }
+        // Motor control is handled entirely by commands in RobotContainer.
+        // This class is kept only as a utility/telemetry holder.
     }
 
     // =========================================================================

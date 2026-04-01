@@ -118,10 +118,19 @@ public class Shooter extends SubsystemBase {
     }
 
     private void populateInterpolationMaps() {
-        // TODO: Scoring truth table (Values must be tuned for distance to RPS / Hood Motor Rotations)
-        m_scoreRpsMap.put(1.5, 50.0);  m_scoreHoodMap.put(1.5, 2.5);
-        m_scoreRpsMap.put(3.0, 75.0);  m_scoreHoodMap.put(3.0, 4.0);
-        m_scoreRpsMap.put(5.0, 100.0); m_scoreHoodMap.put(5.0, 5.5);
+        // Scoring truth table — measured on real robot (distance meters → RPS / hood rotations)
+        m_scoreRpsMap.put(1.71,  -26.00);  m_scoreHoodMap.put(1.71,  0.0);
+        m_scoreRpsMap.put(1.80,  -26.25);  m_scoreHoodMap.put(1.80,  0.0);
+        m_scoreRpsMap.put(2.00,  -26.50);  m_scoreHoodMap.put(2.00,  0.0);
+        m_scoreRpsMap.put(2.27,  -27.00);  m_scoreHoodMap.put(2.27,  0.0);
+        m_scoreRpsMap.put(2.50,  -28.00);  m_scoreHoodMap.put(2.50,  0.0);
+        m_scoreRpsMap.put(2.75,  -29.00);  m_scoreHoodMap.put(2.75,  0.0);
+        m_scoreRpsMap.put(3.355, -33.00);  m_scoreHoodMap.put(3.355, 0.0);
+        m_scoreRpsMap.put(3.85,  -33.50);  m_scoreHoodMap.put(3.85,  0.0);
+        m_scoreRpsMap.put(4.15, -35.00);  m_scoreHoodMap.put(4.15, -0.4);
+        m_scoreRpsMap.put(4.5,  -35.50);  m_scoreHoodMap.put(4.15,  -0.55);
+        m_scoreRpsMap.put(4.8,  -36.00);  m_scoreHoodMap.put(4.8,  -0.75);
+
 
         // Passing truth table
         m_passRpsMap.put(3.0, 35.0);  m_passHoodMap.put(3.0, 8.0);
@@ -273,6 +282,16 @@ public class Shooter extends SubsystemBase {
     public double getTargetHood()      { return m_targetHoodRotations; }
     public double getTargetTurretDeg() { return m_targetTurretDeg; }
     public double getHoodCurrent() { return m_hoodMotor.getStatorCurrent().getValueAsDouble(); }
+
+    /** Returns the interpolated scoring flywheel RPS for a given distance (meters). */
+    public double getInterpolatedFlywheelRps(double distMeters) {
+        return m_scoreRpsMap.get(distMeters);
+    }
+
+    /** Returns the interpolated scoring hood position (rotations) for a given distance (meters). */
+    public double getInterpolatedHoodRotations(double distMeters) {
+        return m_scoreHoodMap.get(distMeters);
+    }
 
     public double getFlywheelRps() {
         return m_leftFlywheel.getVelocity().getValueAsDouble();

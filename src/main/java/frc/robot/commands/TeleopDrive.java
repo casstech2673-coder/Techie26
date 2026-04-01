@@ -22,6 +22,8 @@ public class TeleopDrive extends Command {
     private final BooleanSupplier m_bButton;
     private final BooleanSupplier m_xButton;
     private final BooleanSupplier m_yButton;
+    // A-button hub-align heading (degrees) — computed live so back of robot faces hub
+    private final DoubleSupplier m_hubAlignHeadingDeg;
 
     // Joystick Deadband (Tune this if your controllers are old/drifty)
     private static final double DEADBAND = 0.05;
@@ -35,7 +37,8 @@ public class TeleopDrive extends Command {
             BooleanSupplier aButton,
             BooleanSupplier bButton,
             BooleanSupplier xButton,
-            BooleanSupplier yButton) {
+            BooleanSupplier yButton,
+            DoubleSupplier hubAlignHeadingDeg) {
 
         this.m_swerve = swerve;
         this.m_xSpdFunction = xSpdFunction;
@@ -46,6 +49,7 @@ public class TeleopDrive extends Command {
         this.m_bButton = bButton;
         this.m_xButton = xButton;
         this.m_yButton = yButton;
+        this.m_hubAlignHeadingDeg = hubAlignHeadingDeg;
 
         // Require the swerve subsystem so no other command can drive at the same time
         addRequirements(m_swerve);
@@ -77,16 +81,16 @@ public class TeleopDrive extends Command {
 
         // Standard spatial mapping for the buttons
         if (m_yButton.getAsBoolean()) {
-            targetAngle = Rotation2d.fromDegrees(0); // Y (Top): Away from driver
+            targetAngle = Rotation2d.fromDegrees(0);    // Y: snap forward
         } else if (m_bButton.getAsBoolean()) {
-            targetAngle = Rotation2d.fromDegrees(-90); // B (Right): Right
+            targetAngle = Rotation2d.fromDegrees(-90);  // B: snap right
         } else if (m_aButton.getAsBoolean()) {
-            targetAngle = Rotation2d.fromDegrees(180); // A (Bottom): Toward driver
+            targetAngle = Rotation2d.fromDegrees(m_hubAlignHeadingDeg.getAsDouble()); // A: back faces hub
         } else if (m_xButton.getAsBoolean()) {
-            targetAngle = Rotation2d.fromDegrees(90); // X (Left): Left
+            targetAngle = Rotation2d.fromDegrees(90);   // X: snap left
         } else {
             // No face buttons are being pressed
-            isSnapping = false; 
+            isSnapping = false;
         }
 
         // Drive robot

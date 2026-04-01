@@ -2,6 +2,7 @@ package frc.robot.subsystems;
 
 import com.revrobotics.RelativeEncoder;
 import com.revrobotics.spark.FeedbackSensor;
+import com.revrobotics.spark.SparkAbsoluteEncoder;
 import com.revrobotics.spark.SparkBase.ControlType;
 import com.revrobotics.spark.SparkClosedLoopController;
 import com.revrobotics.spark.SparkLowLevel.MotorType;
@@ -21,6 +22,8 @@ public class Intake extends SubsystemBase {
     // Relative encoder: zeroed at startup (arm manually set to stowed position before enabling)
     private final RelativeEncoder m_pivotEncoder;
     private final SparkClosedLoopController m_pivotController;
+    // Absolute encoder connected to the pivot SparkMax
+    private final SparkAbsoluteEncoder m_absoluteEncoder;
 
     // Live-tuning state
     private double m_manualSpeedLimit = 0.3;
@@ -35,6 +38,7 @@ public class Intake extends SubsystemBase {
 
         m_pivotEncoder = m_pivotMotor.getEncoder();
         m_pivotController = m_pivotMotor.getClosedLoopController();
+        m_absoluteEncoder = m_pivotMotor.getAbsoluteEncoder();
 
         // ==========================================================
         // PIVOT MOTOR CONFIGURATION
@@ -74,6 +78,7 @@ public class Intake extends SubsystemBase {
 
     @Override
     public void periodic() {
+        SmartDashboard.putNumber("Intake/AbsoluteEncoder/Degrees", getAbsoluteDegrees());
         m_manualSpeedLimit = SmartDashboard.getNumber("Intake/Pivot/ManualSpeed", m_manualSpeedLimit);
         double p      = SmartDashboard.getNumber("Intake/Pivot/kP",        m_lastPivotP);
         double i      = SmartDashboard.getNumber("Intake/Pivot/kI",        m_lastPivotI);
@@ -112,9 +117,16 @@ public class Intake extends SubsystemBase {
         m_pivotEncoder.setPosition(0.0);
     }
 
-    public double getPivotPosition() { return m_pivotEncoder.getPosition(); }
-    public double getPivotOutput()   { return m_pivotMotor.getAppliedOutput(); }
-    public double getPivotCurrent()  { return m_pivotMotor.getOutputCurrent(); }
+    public double getPivotPosition()    { return m_pivotEncoder.getPosition(); }
+    public double getPivotOutput()      { return m_pivotMotor.getAppliedOutput(); }
+    public double getPivotCurrent()     { return m_pivotMotor.getOutputCurrent(); }
+    /** Absolute encoder position in degrees (0–360). */
+    public double getAbsoluteDegrees()  { return m_absoluteEncoder.getPosition() * 360.0; }
+
+    /** Direct duty-cycle output to pivot motor, bypassing the manual-speed scaling. */
+    public void setPivotPercent(double percent) {
+        m_pivotMotor.set(percent);
+    }
 
     // ==========================================================
     // INTAKE COMMAND METHODS
