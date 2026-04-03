@@ -6,8 +6,10 @@ import com.revrobotics.spark.SparkAbsoluteEncoder;
 import com.revrobotics.spark.SparkBase.ControlType;
 import com.revrobotics.spark.SparkClosedLoopController;
 import com.revrobotics.spark.SparkLowLevel.MotorType;
+import com.revrobotics.spark.SparkFlex;
 import com.revrobotics.spark.SparkMax;
 import com.revrobotics.spark.config.SparkBaseConfig.IdleMode;
+import com.revrobotics.spark.config.SparkFlexConfig;
 import com.revrobotics.spark.config.SparkMaxConfig;
 
 import edu.wpi.first.wpilibj.smartdashboard.SmartDashboard;
@@ -18,7 +20,8 @@ public class Intake extends SubsystemBase {
 
     // Hardware
     private final SparkMax m_pivotMotor;
-    private final SparkMax m_rollerMotor;
+    private final SparkFlex m_rollerMotor;
+    private final SparkFlex m_rollerFollowerMotor;
     // Relative encoder: zeroed at startup (arm manually set to stowed position before enabling)
     private final RelativeEncoder m_pivotEncoder;
     private final SparkClosedLoopController m_pivotController;
@@ -34,7 +37,8 @@ public class Intake extends SubsystemBase {
 
     public Intake() {
         m_pivotMotor = new SparkMax(IntakeConstants.kPivotMotorId, MotorType.kBrushless);
-        m_rollerMotor = new SparkMax(IntakeConstants.kRollerMotorId, MotorType.kBrushless);
+        m_rollerMotor = new SparkFlex(IntakeConstants.kRollerMotorId, MotorType.kBrushless);
+        m_rollerFollowerMotor = new SparkFlex(IntakeConstants.kRollerFollowerMotorId, MotorType.kBrushless);
 
         m_pivotEncoder = m_pivotMotor.getEncoder();
         m_pivotController = m_pivotMotor.getClosedLoopController();
@@ -68,10 +72,17 @@ public class Intake extends SubsystemBase {
         // ==========================================================
         // ROLLER MOTOR CONFIGURATION
         // ==========================================================
-        SparkMaxConfig rollerConfig = new SparkMaxConfig();
+        SparkFlexConfig rollerConfig = new SparkFlexConfig();
         rollerConfig.inverted(true);
         rollerConfig.smartCurrentLimit(40);
         m_rollerMotor.configure(rollerConfig,
+            com.revrobotics.ResetMode.kResetSafeParameters,
+            com.revrobotics.PersistMode.kPersistParameters);
+
+        SparkFlexConfig followerConfig = new SparkFlexConfig();
+        followerConfig.follow(m_rollerMotor, true); // inverted relative to leader
+        followerConfig.smartCurrentLimit(40);
+        m_rollerFollowerMotor.configure(followerConfig,
             com.revrobotics.ResetMode.kResetSafeParameters,
             com.revrobotics.PersistMode.kPersistParameters);
     }
