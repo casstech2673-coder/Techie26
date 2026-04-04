@@ -108,6 +108,7 @@ public class RobotContainer {
     m_hopper.setDefaultCommand(Commands.run(() -> {
         if (m_operatorController.b().getAsBoolean()) {
             m_hopper.reverse();
+            m_intake.reverseRollers();
         } else {
             m_hopper.stop();
         }
