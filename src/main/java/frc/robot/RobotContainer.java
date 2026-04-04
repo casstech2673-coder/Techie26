@@ -127,7 +127,7 @@ public class RobotContainer {
     // ----------------------------------------------------------
     // AUTO CHOOSER
     // ----------------------------------------------------------
-    if (AutoBuilder.isConfigured()) {
+    if (false && AutoBuilder.isConfigured()) {
       autoChooser = AutoBuilder.buildAutoChooser();
     } else {
       autoChooser = new SendableChooser<>();
@@ -159,7 +159,7 @@ public class RobotContainer {
 
     configureBindings();
   }
-
+  
   // ==========================================================
   // ROBOT LIFECYCLE HOOKS
   // ==========================================================

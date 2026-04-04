@@ -124,7 +124,7 @@ public final class Constants {
         // TODO: CAN IDs
         public static final int kPivotMotorId = 21;
         public static final int kRollerMotorId = 22; // Right hand side motor NEO vortex
-        public static final int kRollerFollowerMotorId = 23; // Aditional motor left hand side 
+        public static final int kRollerFollowerMotorId = 24; // Aditional motor left hand side 
 
         // TODO: Angles (in Degrees) - YOU MUST MEASURE THESE ON THE REAL ROBOT!
         // The REV Through-Bore reads from 0 to 360 degrees.
